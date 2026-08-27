@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Header from "@/components/Header";
 import StatCard, { StatCardProps } from "@/components/StatCard";
+import AssignmentList, { Assignment } from "@/components/AssignmentList";
 
 export default function Home() {
   const [pendingAssignments, setPendingAssignments] = useState(12);
@@ -10,6 +11,37 @@ export default function Home() {
   const handleCompleteAssignment = () => {
     setPendingAssignments((prev) => Math.max(0, prev - 1));
   };
+
+  const mockAssignments: Assignment[] = [
+    {
+      id: 1,
+      title: "Data Structures Lab Report",
+      subject: "Computer Science",
+      dueDate: "March 1, 2026",
+      status: "Pending",
+    },
+    {
+      id: 2,
+      title: "Calculus Problem Set 4",
+      subject: "Mathematics",
+      dueDate: "March 3, 2026",
+      status: "In Progress",
+    },
+    {
+      id: 3,
+      title: "Operating Systems Essay",
+      subject: "Computer Science",
+      dueDate: "March 5, 2026",
+      status: "Pending",
+    },
+    {
+      id: 4,
+      title: "Physics Circuit Simulation",
+      subject: "Physics",
+      dueDate: "February 25, 2026",
+      status: "Completed",
+    },
+  ];
 
   const cards: StatCardProps[] = [
     {
@@ -115,6 +147,11 @@ export default function Home() {
           {cards.map((card) => (
             <StatCard key={card.title} {...card} />
           ))}
+        </div>
+
+        {/* Recent Assignments Section */}
+        <div className="mt-10">
+          <AssignmentList assignments={mockAssignments} />
         </div>
       </main>
     </div>
