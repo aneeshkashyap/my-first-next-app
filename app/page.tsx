@@ -1,41 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Header from "@/components/Header";
 import StatCard, { StatCardProps } from "@/components/StatCard";
 import AssignmentList, { Assignment } from "@/components/AssignmentList";
 import Announcements from "@/components/Announcements";
-
-const initialMockAssignments: Assignment[] = [
-  {
-    id: 1,
-    title: "Data Structures Lab Report",
-    subject: "Computer Science",
-    dueDate: "March 1, 2026",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    title: "Calculus Problem Set 4",
-    subject: "Mathematics",
-    dueDate: "March 3, 2026",
-    status: "In Progress",
-  },
-  {
-    id: 3,
-    title: "Operating Systems Essay",
-    subject: "Computer Science",
-    dueDate: "March 5, 2026",
-    status: "Pending",
-  },
-  {
-    id: 4,
-    title: "Physics Circuit Simulation",
-    subject: "Physics",
-    dueDate: "February 25, 2026",
-    status: "Completed",
-  },
-];
+import { initialMockAssignments } from "@/lib/mockData";
 
 export default function Home() {
   const [assignments, setAssignments] = useState<Assignment[]>(initialMockAssignments);
@@ -150,42 +119,36 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      {/* Top Header / Navigation */}
-      <Header />
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      {/* Title and Subtitle */}
+      <div className="mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Student Dashboard
+        </h1>
+        <p className="mt-2 text-base sm:text-lg text-slate-600 dark:text-slate-400">
+          Welcome to your academic workspace
+        </p>
+      </div>
 
-      {/* Main Content Area */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Title and Subtitle */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Student Dashboard
-          </h1>
-          <p className="mt-2 text-base sm:text-lg text-slate-600 dark:text-slate-400">
-            Welcome to your academic workspace
-          </p>
-        </div>
+      {/* Responsive Dashboard Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {cards.map((card) => (
+          <StatCard key={card.title} {...card} />
+        ))}
+      </div>
 
-        {/* Responsive Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {cards.map((card) => (
-            <StatCard key={card.title} {...card} />
-          ))}
-        </div>
+      {/* Recent Assignments Section */}
+      <div className="mt-10">
+        <AssignmentList
+          assignments={assignments}
+          onComplete={handleCompleteIndividualAssignment}
+        />
+      </div>
 
-        {/* Recent Assignments Section */}
-        <div className="mt-10">
-          <AssignmentList
-            assignments={assignments}
-            onComplete={handleCompleteIndividualAssignment}
-          />
-        </div>
-
-        {/* Recent Announcements Section */}
-        <div className="mt-10">
-          <Announcements />
-        </div>
-      </main>
-    </div>
+      {/* Recent Announcements Section */}
+      <div className="mt-10">
+        <Announcements />
+      </div>
+    </main>
   );
 }
