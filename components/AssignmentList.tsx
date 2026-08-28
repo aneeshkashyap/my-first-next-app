@@ -10,6 +10,7 @@ export interface Assignment {
 
 export interface AssignmentListProps {
   assignments: Assignment[];
+  onComplete?: (id: string | number) => void;
 }
 
 /**
@@ -27,7 +28,10 @@ function getStatusBadgeStyle(status: string): string {
   }
 }
 
-export default function AssignmentList({ assignments }: AssignmentListProps) {
+export default function AssignmentList({
+  assignments,
+  onComplete,
+}: AssignmentListProps) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
       {/* Section Header */}
@@ -47,37 +51,74 @@ export default function AssignmentList({ assignments }: AssignmentListProps) {
 
       {/* Assignment Items List */}
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
-        {assignments.map((assignment) => (
-          <div
-            key={assignment.id}
-            className="p-5 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
-          >
-            {/* Title & Subject */}
-            <div className="space-y-1">
-              <h3 className="font-medium text-slate-900 dark:text-white text-base">
-                {assignment.title}
-              </h3>
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                <span className="font-medium text-slate-700 dark:text-slate-300">
-                  {assignment.subject}
+        {assignments.map((assignment) => {
+          const isCompleted = assignment.status.toLowerCase() === "completed";
+
+          return (
+            <div
+              key={assignment.id}
+              className="p-5 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+            >
+              {/* Title & Subject */}
+              <div className="space-y-1">
+                <h3 className="font-medium text-slate-900 dark:text-white text-base">
+                  {assignment.title}
+                </h3>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                  <span className="font-medium text-slate-700 dark:text-slate-300">
+                    {assignment.subject}
+                  </span>
+                  <span>•</span>
+                  <span>Due {assignment.dueDate}</span>
+                </div>
+              </div>
+
+              {/* Status Badge & Action */}
+              <div className="flex items-center gap-3">
+                <span
+                  className={`text-xs px-3 py-1 rounded-full font-medium border ${getStatusBadgeStyle(
+                    assignment.status
+                  )}`}
+                >
+                  {assignment.status}
                 </span>
-                <span>•</span>
-                <span>Due {assignment.dueDate}</span>
+
+                {onComplete && (
+                  <button
+                    type="button"
+                    onClick={() => onComplete(assignment.id)}
+                    disabled={isCompleted}
+                    className={`text-xs font-medium px-2.5 py-1 rounded-md transition-colors border flex items-center gap-1.5 ${
+                      isCompleted
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-75"
+                        : "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 cursor-pointer"
+                    }`}
+                    aria-label={
+                      isCompleted
+                        ? `${assignment.title} is completed`
+                        : `Mark ${assignment.title} as completed`
+                    }
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span>{isCompleted ? "Done" : "Mark Complete"}</span>
+                  </button>
+                )}
               </div>
             </div>
-
-            {/* Status Badge */}
-            <div className="flex items-center">
-              <span
-                className={`text-xs px-3 py-1 rounded-full font-medium border ${getStatusBadgeStyle(
-                  assignment.status
-                )}`}
-              >
-                {assignment.status}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

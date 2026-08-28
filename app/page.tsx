@@ -6,43 +6,66 @@ import StatCard, { StatCardProps } from "@/components/StatCard";
 import AssignmentList, { Assignment } from "@/components/AssignmentList";
 import Announcements from "@/components/Announcements";
 
+const initialMockAssignments: Assignment[] = [
+  {
+    id: 1,
+    title: "Data Structures Lab Report",
+    subject: "Computer Science",
+    dueDate: "March 1, 2026",
+    status: "Pending",
+  },
+  {
+    id: 2,
+    title: "Calculus Problem Set 4",
+    subject: "Mathematics",
+    dueDate: "March 3, 2026",
+    status: "In Progress",
+  },
+  {
+    id: 3,
+    title: "Operating Systems Essay",
+    subject: "Computer Science",
+    dueDate: "March 5, 2026",
+    status: "Pending",
+  },
+  {
+    id: 4,
+    title: "Physics Circuit Simulation",
+    subject: "Physics",
+    dueDate: "February 25, 2026",
+    status: "Completed",
+  },
+];
+
 export default function Home() {
+  const [assignments, setAssignments] = useState<Assignment[]>(initialMockAssignments);
   const [pendingAssignments, setPendingAssignments] = useState(12);
 
   const handleCompleteAssignment = () => {
+    const firstPending = assignments.find(
+      (a) => a.status.toLowerCase() !== "completed"
+    );
+    if (firstPending) {
+      setAssignments((prev) =>
+        prev.map((item) =>
+          item.id === firstPending.id ? { ...item, status: "Completed" } : item
+        )
+      );
+    }
     setPendingAssignments((prev) => Math.max(0, prev - 1));
   };
 
-  const mockAssignments: Assignment[] = [
-    {
-      id: 1,
-      title: "Data Structures Lab Report",
-      subject: "Computer Science",
-      dueDate: "March 1, 2026",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      title: "Calculus Problem Set 4",
-      subject: "Mathematics",
-      dueDate: "March 3, 2026",
-      status: "In Progress",
-    },
-    {
-      id: 3,
-      title: "Operating Systems Essay",
-      subject: "Computer Science",
-      dueDate: "March 5, 2026",
-      status: "Pending",
-    },
-    {
-      id: 4,
-      title: "Physics Circuit Simulation",
-      subject: "Physics",
-      dueDate: "February 25, 2026",
-      status: "Completed",
-    },
-  ];
+  const handleCompleteIndividualAssignment = (id: string | number) => {
+    const target = assignments.find((a) => a.id === id);
+    if (target && target.status.toLowerCase() !== "completed") {
+      setAssignments((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: "Completed" } : item
+        )
+      );
+      setPendingAssignments((prev) => Math.max(0, prev - 1));
+    }
+  };
 
   const cards: StatCardProps[] = [
     {
@@ -152,7 +175,10 @@ export default function Home() {
 
         {/* Recent Assignments Section */}
         <div className="mt-10">
-          <AssignmentList assignments={mockAssignments} />
+          <AssignmentList
+            assignments={assignments}
+            onComplete={handleCompleteIndividualAssignment}
+          />
         </div>
 
         {/* Recent Announcements Section */}
