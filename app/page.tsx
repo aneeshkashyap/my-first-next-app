@@ -4,6 +4,7 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import StatCard, { StatCardProps } from "@/components/StatCard";
 import AssignmentList, { Assignment } from "@/components/AssignmentList";
+import Announcements from "@/components/Announcements";
 
 export default function Home() {
   const [pendingAssignments, setPendingAssignments] = useState(12);
@@ -152,6 +153,11 @@ export default function Home() {
         {/* Recent Assignments Section */}
         <div className="mt-10">
           <AssignmentList assignments={mockAssignments} />
+        </div>
+
+        {/* Recent Announcements Section */}
+        <div className="mt-10">
+          <Announcements />
         </div>
       </main>
     </div>
