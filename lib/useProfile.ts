@@ -1,14 +1,37 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { StudentProfile, mockStudentProfile } from "@/lib/mockData";
 
 const PROFILE_STORAGE_KEY = "student_portal_profile_v1";
 
+const profileListeners = new Set<() => void>();
+
+function notifyProfileListeners() {
+  profileListeners.forEach((listener) => listener());
+}
+
+function subscribeProfile(callback: () => void) {
+  profileListeners.add(callback);
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === PROFILE_STORAGE_KEY) {
+      callback();
+    }
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    profileListeners.delete(callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+let cachedProfileJson = "";
+let cachedProfile: StudentProfile = mockStudentProfile;
+
 /**
  * Safely loads student profile from localStorage or falls back to mockStudentProfile
  */
-function loadProfileFromStorage(): StudentProfile {
+function getProfileSnapshot(): StudentProfile {
   if (typeof window === "undefined") {
     return mockStudentProfile;
   }
@@ -19,20 +42,31 @@ function loadProfileFromStorage(): StudentProfile {
       return mockStudentProfile;
     }
 
+    if (raw === cachedProfileJson) {
+      return cachedProfile;
+    }
+
     const parsed = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) {
       return mockStudentProfile;
     }
 
-    // Merge saved data with mockStudentProfile to ensure all properties exist
-    return {
+    const merged: StudentProfile = {
       ...mockStudentProfile,
       ...parsed,
     };
+
+    cachedProfileJson = raw;
+    cachedProfile = merged;
+    return cachedProfile;
   } catch (error) {
     console.warn("Failed to load student profile from localStorage:", error);
     return mockStudentProfile;
   }
+}
+
+function getServerProfileSnapshot(): StudentProfile {
+  return mockStudentProfile;
 }
 
 /**
@@ -42,39 +76,22 @@ function saveProfileToStorage(profile: StudentProfile): void {
   if (typeof window === "undefined") return;
 
   try {
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    const json = JSON.stringify(profile);
+    localStorage.setItem(PROFILE_STORAGE_KEY, json);
+    cachedProfileJson = json;
+    cachedProfile = profile;
+    notifyProfileListeners();
   } catch (error) {
     console.warn("Failed to save student profile to localStorage:", error);
   }
 }
 
 export function useProfile() {
-  const [profile, setProfile] = useState<StudentProfile>(mockStudentProfile);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // Restore saved profile on mount without hydration mismatch
-  useEffect(() => {
-    const saved = loadProfileFromStorage();
-    setProfile(saved);
-    setIsLoaded(true);
-  }, []);
-
-  // Listen to window storage events to sync across tabs
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === PROFILE_STORAGE_KEY && e.newValue) {
-        try {
-          const updated = loadProfileFromStorage();
-          setProfile(updated);
-        } catch {
-          // ignore
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  const profile = useSyncExternalStore(
+    subscribeProfile,
+    getProfileSnapshot,
+    getServerProfileSnapshot
+  );
 
   const updateProfile = useCallback(
     (
@@ -114,7 +131,6 @@ export function useProfile() {
         ...updatedData,
       };
 
-      setProfile(nextProfile);
       saveProfileToStorage(nextProfile);
       return { success: true };
     },
@@ -122,7 +138,6 @@ export function useProfile() {
   );
 
   const resetToDefault = useCallback(() => {
-    setProfile(mockStudentProfile);
     saveProfileToStorage(mockStudentProfile);
   }, []);
 
@@ -130,6 +145,6 @@ export function useProfile() {
     profile,
     updateProfile,
     resetToDefault,
-    isLoaded,
+    isLoaded: true,
   };
 }

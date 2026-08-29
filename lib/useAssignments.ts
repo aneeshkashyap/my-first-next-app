@@ -1,16 +1,39 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { Assignment } from "@/components/AssignmentList";
 import { initialMockAssignments } from "@/lib/mockData";
 
 const STORAGE_KEY = "student_portal_assignments_v1";
 
+const assignmentListeners = new Set<() => void>();
+
+function notifyAssignmentListeners() {
+  assignmentListeners.forEach((listener) => listener());
+}
+
+function subscribeAssignments(callback: () => void) {
+  assignmentListeners.add(callback);
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY) {
+      callback();
+    }
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    assignmentListeners.delete(callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
+let cachedAssignmentsJson = "";
+let cachedAssignments: Assignment[] = initialMockAssignments;
+
 /**
  * Safely parses and loads assignments from localStorage,
  * gracefully falling back to initialMockAssignments on errors or missing data.
  */
-function loadAssignmentsFromStorage(): Assignment[] {
+function getAssignmentsSnapshot(): Assignment[] {
   if (typeof window === "undefined") {
     return initialMockAssignments;
   }
@@ -21,13 +44,17 @@ function loadAssignmentsFromStorage(): Assignment[] {
       return initialMockAssignments;
     }
 
+    if (raw === cachedAssignmentsJson) {
+      return cachedAssignments;
+    }
+
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return initialMockAssignments;
     }
 
     // Merge saved data with initialMockAssignments to guarantee structural and type safety
-    return initialMockAssignments.map((mockItem) => {
+    const result = initialMockAssignments.map((mockItem) => {
       const savedItem = parsed.find(
         (item: unknown) =>
           typeof item === "object" &&
@@ -44,10 +71,18 @@ function loadAssignmentsFromStorage(): Assignment[] {
       }
       return mockItem;
     });
+
+    cachedAssignmentsJson = raw;
+    cachedAssignments = result;
+    return cachedAssignments;
   } catch (error) {
     console.warn("Failed to retrieve or parse assignments from localStorage:", error);
     return initialMockAssignments;
   }
+}
+
+function getServerAssignmentsSnapshot(): Assignment[] {
+  return initialMockAssignments;
 }
 
 /**
@@ -57,64 +92,44 @@ function saveAssignmentsToStorage(assignments: Assignment[]): void {
   if (typeof window === "undefined") return;
 
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(assignments));
+    const json = JSON.stringify(assignments);
+    localStorage.setItem(STORAGE_KEY, json);
+    cachedAssignmentsJson = json;
+    cachedAssignments = assignments;
+    notifyAssignmentListeners();
   } catch (error) {
     console.warn("Failed to save assignments to localStorage:", error);
   }
 }
 
 export function useAssignments() {
-  const [assignments, setAssignments] = useState<Assignment[]>(initialMockAssignments);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const assignments = useSyncExternalStore(
+    subscribeAssignments,
+    getAssignmentsSnapshot,
+    getServerAssignmentsSnapshot
+  );
 
-  // Restore completed assignments on initial client mount to avoid SSR hydration mismatch
-  useEffect(() => {
-    const saved = loadAssignmentsFromStorage();
-    setAssignments(saved);
-    setIsLoaded(true);
-  }, []);
-
-  // Listen to window storage events to sync across browser tabs/windows
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
-        try {
-          const updated = loadAssignmentsFromStorage();
-          setAssignments(updated);
-        } catch {
-          // ignore
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  const completeAssignment = useCallback((id: string | number) => {
-    setAssignments((prev) => {
-      const updated = prev.map((item) =>
+  const completeAssignment = useCallback(
+    (id: string | number) => {
+      const updated = assignments.map((item) =>
         item.id === id ? { ...item, status: "Completed" } : item
       );
       saveAssignmentsToStorage(updated);
-      return updated;
-    });
-  }, []);
+    },
+    [assignments]
+  );
 
   const completeOne = useCallback(() => {
-    setAssignments((prev) => {
-      const firstPending = prev.find(
-        (a) => a.status.toLowerCase() !== "completed"
-      );
-      if (!firstPending) return prev;
+    const firstPending = assignments.find(
+      (a) => a.status.toLowerCase() !== "completed"
+    );
+    if (!firstPending) return;
 
-      const updated = prev.map((item) =>
-        item.id === firstPending.id ? { ...item, status: "Completed" } : item
-      );
-      saveAssignmentsToStorage(updated);
-      return updated;
-    });
-  }, []);
+    const updated = assignments.map((item) =>
+      item.id === firstPending.id ? { ...item, status: "Completed" } : item
+    );
+    saveAssignmentsToStorage(updated);
+  }, [assignments]);
 
   const totalCount = assignments.length;
   const completedCount = assignments.filter(
@@ -131,6 +146,6 @@ export function useAssignments() {
     totalCount,
     completeAssignment,
     completeOne,
-    isLoaded,
+    isLoaded: true,
   };
 }

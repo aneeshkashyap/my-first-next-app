@@ -1,29 +1,30 @@
 /**
- * Authentication Types, Mock User Configuration, and Storage Utilities
+ * Authentication Types, Mock User Configuration, and Service Layer
  * 
  * This module isolates all mock authentication credentials and session
- * management so it can be easily replaced by a real backend API in the future.
+ * management so it can be easily replaced by a real backend API (e.g. Supabase,
+ * NextAuth, or custom API) without modifying UI components.
  */
 
 export interface AuthUser {
-  email: string;
+  id: string;
   name: string;
+  email: string;
   studentId: string;
-  department: string;
   role: "student";
 }
 
 /**
  * Isolated Development Mock Credentials
  */
-export const MOCK_USER_CREDENTIALS = {
+const MOCK_DEV_CREDENTIALS = {
   email: "2024cs0905@svce.ac.in",
   password: "Student@123",
   user: {
-    email: "2024cs0905@svce.ac.in",
+    id: "usr_2024cs0905",
     name: "Aneesh Kashyap K S",
-    studentId: "2024CS0905",
-    department: "Computer Science & Engineering",
+    email: "2024cs0905@svce.ac.in",
+    studentId: "STU-2024-8891",
     role: "student" as const,
   },
 };
@@ -47,6 +48,7 @@ export function getStoredAuthUser(): AuthUser | null {
     if (
       typeof parsed === "object" &&
       parsed !== null &&
+      typeof parsed.id === "string" &&
       typeof parsed.email === "string" &&
       typeof parsed.name === "string"
     ) {
@@ -86,8 +88,8 @@ export function clearStoredAuthUser(): void {
 }
 
 /**
- * Mock authentication validator.
- * Simulates server-side verification with credential checking.
+ * Authentication service function.
+ * Validates credentials against development mock data.
  */
 export async function authenticateCredentials(
   email: string,
@@ -97,12 +99,12 @@ export async function authenticateCredentials(
   await new Promise((resolve) => setTimeout(resolve, 250));
 
   const cleanEmail = email.trim().toLowerCase();
-  const targetEmail = MOCK_USER_CREDENTIALS.email.toLowerCase();
+  const targetEmail = MOCK_DEV_CREDENTIALS.email.toLowerCase();
 
-  if (cleanEmail === targetEmail && password === MOCK_USER_CREDENTIALS.password) {
+  if (cleanEmail === targetEmail && password === MOCK_DEV_CREDENTIALS.password) {
     return {
       success: true,
-      user: MOCK_USER_CREDENTIALS.user,
+      user: MOCK_DEV_CREDENTIALS.user,
     };
   }
 

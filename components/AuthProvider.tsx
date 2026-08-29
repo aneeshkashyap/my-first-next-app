@@ -3,9 +3,8 @@
 import React, {
   createContext,
   useContext,
-  useState,
-  useEffect,
   useCallback,
+  useSyncExternalStore,
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -30,42 +29,76 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const router = useRouter();
+// Listeners for in-memory session changes and multi-tab synchronization
+const authListeners = new Set<() => void>();
 
-  // Restore authenticated session on client mount to prevent SSR hydration mismatch
-  useEffect(() => {
-    const savedUser = getStoredAuthUser();
-    if (savedUser) {
-      setUser(savedUser);
+function notifyAuthListeners() {
+  authListeners.forEach((listener) => listener());
+}
+
+function subscribeAuth(callback: () => void) {
+  authListeners.add(callback);
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === "student_portal_auth_session_v1") {
+      callback();
     }
-    setIsLoading(false);
-  }, []);
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    authListeners.delete(callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
 
-  // Sync session changes across multiple browser tabs/windows
-  useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "student_portal_auth_session_v1") {
-        const updated = getStoredAuthUser();
-        setUser(updated);
-        if (!updated) {
-          router.replace("/login");
-        }
-      }
-    };
+let cachedUserJson = "";
+let cachedUser: AuthUser | null = null;
 
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, [router]);
+function getAuthSnapshot(): AuthUser | null {
+  const current = getStoredAuthUser();
+  const json = JSON.stringify(current);
+  if (json !== cachedUserJson) {
+    cachedUserJson = json;
+    cachedUser = current;
+  }
+  return cachedUser;
+}
+
+function getServerAuthSnapshot(): AuthUser | null {
+  return null;
+}
+
+function subscribeClient() {
+  return () => {};
+}
+
+function getClientSnapshot(): boolean {
+  return true;
+}
+
+function getServerClientSnapshot(): boolean {
+  return false;
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const isClient = useSyncExternalStore(
+    subscribeClient,
+    getClientSnapshot,
+    getServerClientSnapshot
+  );
+
+  const user = useSyncExternalStore(
+    subscribeAuth,
+    getAuthSnapshot,
+    getServerAuthSnapshot
+  );
 
   const login = useCallback(
     async (email: string, password: string) => {
       const result = await authenticateCredentials(email, password);
       if (result.success && result.user) {
-        setUser(result.user);
         setStoredAuthUser(result.user);
+        notifyAuthListeners();
         router.replace("/");
         return { success: true };
       }
@@ -75,8 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    setUser(null);
     clearStoredAuthUser();
+    notifyAuthListeners();
     router.replace("/login");
   }, [router]);
 
@@ -85,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: !!user,
-        isLoading,
+        isLoading: !isClient,
         login,
         logout,
       }}

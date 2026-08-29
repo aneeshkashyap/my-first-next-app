@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { MOCK_USER_CREDENTIALS } from "@/lib/auth";
 
 export default function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -26,7 +25,6 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMessage(null);
 
-    // Client-side field validations
     const cleanEmail = email.trim();
     if (!cleanEmail) {
       setErrorMessage("Please enter your institutional email address.");
@@ -51,12 +49,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleFillDemoCredentials = () => {
-    setEmail(MOCK_USER_CREDENTIALS.email);
-    setPassword(MOCK_USER_CREDENTIALS.password);
-    setErrorMessage(null);
-  };
-
   if (isLoading || isAuthenticated) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
@@ -77,36 +69,8 @@ export default function LoginPage() {
             Sign In to Student Portal
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Enter your institutional student credentials to access your dashboard
+            Enter your institutional credentials to access your academic workspace
           </p>
-        </div>
-
-        {/* Demo Credentials Quick-Fill Hint Box */}
-        <div className="p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-xs text-indigo-950 dark:text-indigo-200 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-indigo-800 dark:text-indigo-300 flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Development Credentials
-            </span>
-            <button
-              type="button"
-              onClick={handleFillDemoCredentials}
-              className="text-[11px] font-medium px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/80 hover:bg-indigo-200 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-200 transition-colors cursor-pointer border border-indigo-200 dark:border-indigo-700"
-            >
-              Auto-fill Demo
-            </button>
-          </div>
-          <div className="font-mono text-[11px] space-y-0.5 text-slate-600 dark:text-slate-300 pt-1 border-t border-indigo-100 dark:border-indigo-900/40">
-            <div>Email: <span className="font-semibold text-slate-800 dark:text-slate-100">{MOCK_USER_CREDENTIALS.email}</span></div>
-            <div>Password: <span className="font-semibold text-slate-800 dark:text-slate-100">{MOCK_USER_CREDENTIALS.password}</span></div>
-          </div>
         </div>
 
         {/* Login Form Container */}
@@ -162,7 +126,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="2024cs0905@svce.ac.in"
+                  placeholder="name@svce.ac.in"
                   className="w-full pl-9 pr-3.5 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
                 />
               </div>
