@@ -5,7 +5,10 @@ export interface StudentProfile {
   studentId: string;
   department: string;
   semester: string;
+  year: string;
   email: string;
+  phone: string;
+  batch: string;
   cgpa: string;
   attendance: string;
   attendancePercent: number;
@@ -75,7 +78,10 @@ export const mockStudentProfile: StudentProfile = {
   studentId: "STU-2024-8891",
   department: "Computer Science & Engineering",
   semester: "6th Semester (Spring 2026)",
+  year: "3rd Year",
   email: "aneesh.kashyap@university.edu",
+  phone: "+1 (555) 234-5678",
+  batch: "2023 - 2027",
   cgpa: "8.5",
   attendance: "85%",
   attendancePercent: 85,
