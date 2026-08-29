@@ -74,14 +74,14 @@ export const initialMockAssignments: Assignment[] = [
 ];
 
 export const mockStudentProfile: StudentProfile = {
-  name: "Aneesh Kashyap",
-  studentId: "STU-2024-8891",
+  name: "Aneesh Kashyap K S",
+  studentId: "2024CS0905",
   department: "Computer Science & Engineering",
   semester: "6th Semester (Spring 2026)",
   year: "3rd Year",
-  email: "aneesh.kashyap@university.edu",
-  phone: "+1 (555) 234-5678",
-  batch: "2023 - 2027",
+  email: "2024cs0905@svce.ac.in",
+  phone: "+91 98765 43210",
+  batch: "2024 - 2028",
   cgpa: "8.5",
   attendance: "85%",
   attendancePercent: 85,

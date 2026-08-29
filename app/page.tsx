@@ -3,9 +3,12 @@
 import StatCard, { StatCardProps } from "@/components/StatCard";
 import AssignmentList from "@/components/AssignmentList";
 import Announcements from "@/components/Announcements";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAssignments } from "@/lib/useAssignments";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function Home() {
+  const { user } = useAuth();
   const { assignments, pendingCount, completeAssignment, completeOne } =
     useAssignments();
 
@@ -92,36 +95,38 @@ export default function Home() {
   ];
 
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Title and Subtitle */}
-      <div className="mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Student Dashboard
-        </h1>
-        <p className="mt-2 text-base sm:text-lg text-slate-600 dark:text-slate-400">
-          Welcome to your academic workspace
-        </p>
-      </div>
+    <ProtectedRoute>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        {/* Title and Personalized Subtitle */}
+        <div className="mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Student Dashboard
+          </h1>
+          <p className="mt-2 text-base sm:text-lg text-slate-600 dark:text-slate-400">
+            Welcome back, <span className="font-semibold text-slate-900 dark:text-slate-100">{user?.name || "Student"}</span> • Academic workspace
+          </p>
+        </div>
 
-      {/* Responsive Dashboard Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {cards.map((card) => (
-          <StatCard key={card.title} {...card} />
-        ))}
-      </div>
+        {/* Responsive Dashboard Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {cards.map((card) => (
+            <StatCard key={card.title} {...card} />
+          ))}
+        </div>
 
-      {/* Recent Assignments Section */}
-      <div className="mt-10">
-        <AssignmentList
-          assignments={assignments}
-          onComplete={completeAssignment}
-        />
-      </div>
+        {/* Recent Assignments Section */}
+        <div className="mt-10">
+          <AssignmentList
+            assignments={assignments}
+            onComplete={completeAssignment}
+          />
+        </div>
 
-      {/* Recent Announcements Section */}
-      <div className="mt-10">
-        <Announcements />
-      </div>
-    </main>
+        {/* Recent Announcements Section */}
+        <div className="mt-10">
+          <Announcements />
+        </div>
+      </main>
+    </ProtectedRoute>
   );
 }
