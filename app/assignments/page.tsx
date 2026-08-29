@@ -1,25 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import AssignmentList, { Assignment } from "@/components/AssignmentList";
-import { initialMockAssignments } from "@/lib/mockData";
+import React from "react";
+import AssignmentList from "@/components/AssignmentList";
+import { useAssignments } from "@/lib/useAssignments";
 
 export default function AssignmentsPage() {
-  const [assignments, setAssignments] = useState<Assignment[]>(initialMockAssignments);
-
-  const handleCompleteAssignment = (id: string | number) => {
-    setAssignments((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "Completed" } : item
-      )
-    );
-  };
-
-  const totalCount = assignments.length;
-  const completedCount = assignments.filter(
-    (a) => a.status.toLowerCase() === "completed"
-  ).length;
-  const pendingCount = totalCount - completedCount;
+  const { assignments, pendingCount, completedCount, completeAssignment } =
+    useAssignments();
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -48,7 +35,7 @@ export default function AssignmentsPage() {
       {/* Assignment List Component */}
       <AssignmentList
         assignments={assignments}
-        onComplete={handleCompleteAssignment}
+        onComplete={completeAssignment}
       />
     </main>
   );

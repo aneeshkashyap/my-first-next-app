@@ -1,40 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import StatCard, { StatCardProps } from "@/components/StatCard";
-import AssignmentList, { Assignment } from "@/components/AssignmentList";
+import AssignmentList from "@/components/AssignmentList";
 import Announcements from "@/components/Announcements";
-import { initialMockAssignments } from "@/lib/mockData";
+import { useAssignments } from "@/lib/useAssignments";
 
 export default function Home() {
-  const [assignments, setAssignments] = useState<Assignment[]>(initialMockAssignments);
-  const [pendingAssignments, setPendingAssignments] = useState(12);
-
-  const handleCompleteAssignment = () => {
-    const firstPending = assignments.find(
-      (a) => a.status.toLowerCase() !== "completed"
-    );
-    if (firstPending) {
-      setAssignments((prev) =>
-        prev.map((item) =>
-          item.id === firstPending.id ? { ...item, status: "Completed" } : item
-        )
-      );
-    }
-    setPendingAssignments((prev) => Math.max(0, prev - 1));
-  };
-
-  const handleCompleteIndividualAssignment = (id: string | number) => {
-    const target = assignments.find((a) => a.id === id);
-    if (target && target.status.toLowerCase() !== "completed") {
-      setAssignments((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, status: "Completed" } : item
-        )
-      );
-      setPendingAssignments((prev) => Math.max(0, prev - 1));
-    }
-  };
+  const { assignments, pendingCount, completeAssignment, completeOne } =
+    useAssignments();
 
   const cards: StatCardProps[] = [
     {
@@ -84,11 +57,11 @@ export default function Home() {
     },
     {
       title: "Assignments",
-      value: `${pendingAssignments} Pending`,
+      value: `${pendingCount} Pending`,
       description: "Upcoming tasks to complete",
-      status: pendingAssignments === 0 ? "All Done" : "In Progress",
+      status: pendingCount === 0 ? "All Done" : "In Progress",
       statusColor:
-        pendingAssignments === 0
+        pendingCount === 0
           ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800"
           : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800",
       icon: (
@@ -108,8 +81,8 @@ export default function Home() {
       ),
       action: (
         <button
-          onClick={handleCompleteAssignment}
-          disabled={pendingAssignments === 0}
+          onClick={completeOne}
+          disabled={pendingCount === 0}
           className="text-xs font-medium px-2.5 py-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded-md transition-colors border border-amber-200 dark:border-amber-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           Complete One
@@ -141,7 +114,7 @@ export default function Home() {
       <div className="mt-10">
         <AssignmentList
           assignments={assignments}
-          onComplete={handleCompleteIndividualAssignment}
+          onComplete={completeAssignment}
         />
       </div>
 
