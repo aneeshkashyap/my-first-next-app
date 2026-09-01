@@ -3,7 +3,11 @@ import { StudentProfile } from "@/lib/mockData";
 
 export interface ProfileEditFormProps {
   initialProfile: StudentProfile;
-  onSave: (updated: Partial<StudentProfile>) => { success: boolean; errors?: Record<string, string> };
+  onSave: (
+    updated: Partial<StudentProfile>
+  ) =>
+    | Promise<{ success: boolean; errors?: Record<string, string> }>
+    | { success: boolean; errors?: Record<string, string> };
   onCancel: () => void;
 }
 
@@ -37,11 +41,11 @@ export default function ProfileEditForm({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const result = onSave(formData);
+    const result = await onSave(formData);
     if (!result.success && result.errors) {
       setErrors(result.errors);
       setIsSubmitting(false);

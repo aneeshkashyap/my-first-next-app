@@ -1,105 +1,205 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
-import { StudentProfile, mockStudentProfile } from "@/lib/mockData";
+import { useState, useEffect, useCallback } from "react";
+import { StudentProfile } from "@/lib/mockData";
+import { useAuth } from "@/components/AuthProvider";
+import { createClient } from "@/utils/supabase/client";
 
-const PROFILE_STORAGE_KEY = "student_portal_profile_v1";
-
-const profileListeners = new Set<() => void>();
-
-function notifyProfileListeners() {
-  profileListeners.forEach((listener) => listener());
-}
-
-function subscribeProfile(callback: () => void) {
-  profileListeners.add(callback);
-  const handleStorage = (e: StorageEvent) => {
-    if (e.key === PROFILE_STORAGE_KEY) {
-      callback();
-    }
-  };
-  window.addEventListener("storage", handleStorage);
-  return () => {
-    profileListeners.delete(callback);
-    window.removeEventListener("storage", handleStorage);
-  };
-}
-
-let cachedProfileJson = "";
-let cachedProfile: StudentProfile = mockStudentProfile;
+export type ProfileDataSource = "supabase" | "fallback" | "loading";
 
 /**
- * Safely loads student profile from localStorage or falls back to mockStudentProfile
+ * Normalizes and extracts student profile data from Supabase `profiles` table row
  */
-function getProfileSnapshot(): StudentProfile {
-  if (typeof window === "undefined") {
-    return mockStudentProfile;
-  }
+function normalizeSupabaseProfile(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any,
+  fallbackUserEmail?: string,
+  fallbackUserName?: string,
+  fallbackStudentId?: string
+): StudentProfile {
+  const email = data.email || fallbackUserEmail || "";
+  const name =
+    data.name ||
+    data.full_name ||
+    data.student_name ||
+    fallbackUserName ||
+    (email ? email.split("@")[0] : "Student");
 
-  try {
-    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
-    if (!raw) {
-      return mockStudentProfile;
-    }
+  const studentId =
+    data.student_id ||
+    data.studentId ||
+    data.roll_no ||
+    data.roll_number ||
+    fallbackStudentId ||
+    (email ? email.split("@")[0].toUpperCase() : "STU-2024");
 
-    if (raw === cachedProfileJson) {
-      return cachedProfile;
-    }
+  const department =
+    data.department ||
+    data.dept ||
+    data.major ||
+    "Computer Science & Engineering";
 
-    const parsed = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) {
-      return mockStudentProfile;
-    }
+  const semester =
+    data.semester ||
+    data.current_semester ||
+    "6th Semester (Spring 2026)";
 
-    const merged: StudentProfile = {
-      ...mockStudentProfile,
-      ...parsed,
-    };
+  const year =
+    data.year ||
+    data.academic_year ||
+    "3rd Year";
 
-    cachedProfileJson = raw;
-    cachedProfile = merged;
-    return cachedProfile;
-  } catch (error) {
-    console.warn("Failed to load student profile from localStorage:", error);
-    return mockStudentProfile;
-  }
-}
+  const phone =
+    data.phone ||
+    data.phone_number ||
+    data.mobile ||
+    "+91 98765 43210";
 
-function getServerProfileSnapshot(): StudentProfile {
-  return mockStudentProfile;
-}
+  const batch =
+    data.batch ||
+    data.academic_batch ||
+    "2024 - 2028";
 
-/**
- * Safely persists student profile to localStorage
- */
-function saveProfileToStorage(profile: StudentProfile): void {
-  if (typeof window === "undefined") return;
+  const cgpa =
+    data.cgpa !== undefined && data.cgpa !== null ? String(data.cgpa) : "8.5";
 
-  try {
-    const json = JSON.stringify(profile);
-    localStorage.setItem(PROFILE_STORAGE_KEY, json);
-    cachedProfileJson = json;
-    cachedProfile = profile;
-    notifyProfileListeners();
-  } catch (error) {
-    console.warn("Failed to save student profile to localStorage:", error);
-  }
+  const attendance =
+    data.attendance !== undefined && data.attendance !== null
+      ? (String(data.attendance).includes("%") ? String(data.attendance) : `${data.attendance}%`)
+      : "85%";
+
+  const parsedPercent = parseFloat(attendance.replace("%", ""));
+  const attendancePercent =
+    typeof data.attendance_percent === "number"
+      ? data.attendance_percent
+      : typeof data.attendancePercent === "number"
+      ? data.attendancePercent
+      : isNaN(parsedPercent)
+      ? 85
+      : parsedPercent;
+
+  return {
+    name,
+    studentId,
+    department,
+    semester,
+    year,
+    email,
+    phone,
+    batch,
+    cgpa,
+    attendance,
+    attendancePercent,
+  };
 }
 
 export function useProfile() {
-  const profile = useSyncExternalStore(
-    subscribeProfile,
-    getProfileSnapshot,
-    getServerProfileSnapshot
-  );
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<StudentProfile>(() => ({
+    name: user?.name || "Student",
+    studentId: user?.studentId || "STU-2024",
+    department: "Computer Science & Engineering",
+    semester: "6th Semester (Spring 2026)",
+    year: "3rd Year",
+    email: user?.email || "",
+    phone: "+91 98765 43210",
+    batch: "2024 - 2028",
+    cgpa: "8.5",
+    attendance: "85%",
+    attendancePercent: 85,
+  }));
+
+  const [dataSource, setDataSource] = useState<ProfileDataSource>("loading");
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
+
+  // Retrieve student profile directly from Supabase profiles table using auth.uid() (user.id)
+  useEffect(() => {
+    let isMounted = true;
+    const supabase = createClient();
+
+    async function fetchSupabaseProfile() {
+      if (!user) {
+        if (isMounted) {
+          setDataSource("fallback");
+          setIsLoaded(true);
+        }
+        return;
+      }
+
+      console.info(`[Supabase Auth] Querying 'profiles' table with auth.uid() == '${user.id}' (${user.email})...`);
+
+      try {
+        // Query Supabase profiles table using auth.uid()
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.warn("[Supabase Profiles Query Notice]:", error.message);
+          setSupabaseError(error.message);
+        }
+
+        if (data) {
+          console.info("[Supabase Profiles] Record found in database:", data);
+          const normalized = normalizeSupabaseProfile(
+            data,
+            user.email,
+            user.name,
+            user.studentId
+          );
+          setProfile(normalized);
+          setDataSource("supabase");
+        } else {
+          console.warn(
+            `[Supabase Profiles] No row found in 'public.profiles' for auth.uid() = '${user.id}'. Using authenticated session defaults.`
+          );
+          setProfile({
+            name: user.name || "Student",
+            studentId: user.studentId || "STU-2024",
+            department: "Computer Science & Engineering",
+            semester: "6th Semester (Spring 2026)",
+            year: "3rd Year",
+            email: user.email || "",
+            phone: "+91 98765 43210",
+            batch: "2024 - 2028",
+            cgpa: "8.5",
+            attendance: "85%",
+            attendancePercent: 85,
+          });
+          setDataSource("fallback");
+        }
+      } catch (err) {
+        console.error("[Supabase Profiles] Error fetching profile row:", err);
+        if (isMounted) {
+          setDataSource("fallback");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoaded(true);
+        }
+      }
+    }
+
+    fetchSupabaseProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const updateProfile = useCallback(
-    (
+    async (
       updatedData: Partial<StudentProfile>
-    ): { success: boolean; errors?: Record<string, string> } => {
+    ): Promise<{ success: boolean; errors?: Record<string, string> }> => {
       const errors: Record<string, string> = {};
 
-      // Validation
+      // Form Validations
       if (updatedData.name !== undefined && !updatedData.name.trim()) {
         errors.name = "Student name is required.";
       }
@@ -131,20 +231,62 @@ export function useProfile() {
         ...updatedData,
       };
 
-      saveProfileToStorage(nextProfile);
+      setIsSaving(true);
+      setProfile(nextProfile);
+
+      // Persist directly to Supabase profiles table using auth.uid()
+      if (user?.id) {
+        const supabase = createClient();
+        try {
+          const payload = {
+            id: user.id,
+            name: nextProfile.name,
+            full_name: nextProfile.name,
+            email: nextProfile.email,
+            phone: nextProfile.phone,
+            phone_number: nextProfile.phone,
+            department: nextProfile.department,
+            semester: nextProfile.semester,
+            year: nextProfile.year,
+            batch: nextProfile.batch,
+            student_id: nextProfile.studentId,
+            cgpa: nextProfile.cgpa,
+            attendance: nextProfile.attendance,
+            attendance_percent: nextProfile.attendancePercent,
+            updated_at: new Date().toISOString(),
+          };
+
+          console.info("[Supabase Profiles] Upserting record for auth.uid():", user.id);
+          const { error } = await supabase
+            .from("profiles")
+            .upsert(payload, { onConflict: "id" });
+
+          if (error) {
+            console.warn("[Supabase Profiles] Upsert notice:", error.message);
+          } else {
+            console.info("[Supabase Profiles] Profile upserted successfully.");
+            setDataSource("supabase");
+          }
+        } catch (err) {
+          console.error("[Supabase Profiles] Could not persist profile to Supabase:", err);
+        } finally {
+          setIsSaving(false);
+        }
+      } else {
+        setIsSaving(false);
+      }
+
       return { success: true };
     },
-    [profile]
+    [profile, user]
   );
-
-  const resetToDefault = useCallback(() => {
-    saveProfileToStorage(mockStudentProfile);
-  }, []);
 
   return {
     profile,
     updateProfile,
-    resetToDefault,
-    isLoaded: true,
+    isLoaded,
+    isSaving,
+    dataSource,
+    supabaseError,
   };
 }

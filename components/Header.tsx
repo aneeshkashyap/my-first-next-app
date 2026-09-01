@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { useProfile } from "@/lib/useProfile";
 
 interface NavItem {
   name: string;
@@ -22,14 +23,18 @@ export default function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const { profile } = useProfile();
 
   // Hide the navigation header completely on the login page
   if (pathname === "/login") {
     return null;
   }
 
-  const userInitials = user?.name
-    ? user.name
+  const displayName = profile.name || user?.name || "Student";
+  const displayId = profile.studentId || user?.studentId || "Active";
+
+  const userInitials = displayName
+    ? displayName
         .split(" ")
         .map((n) => n[0])
         .slice(0, 2)
@@ -94,10 +99,10 @@ export default function Header() {
                 </div>
                 <div className="text-left">
                   <span className="block text-xs font-semibold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate max-w-[120px]">
-                    {user?.name || "Student"}
+                    {displayName}
                   </span>
                   <span className="block text-[10px] text-slate-500 dark:text-slate-400 -mt-0.5">
-                    {user?.studentId || "Active"}
+                    {displayId}
                   </span>
                 </div>
               </Link>
@@ -176,7 +181,7 @@ export default function Header() {
               </div>
               <div>
                 <span className="block text-xs font-semibold text-slate-900 dark:text-white">
-                  {user?.name}
+                  {displayName}
                 </span>
                 <span className="block text-[10px] text-slate-500 dark:text-slate-400">
                   {user?.email}

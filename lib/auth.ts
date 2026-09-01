@@ -1,10 +1,12 @@
 /**
- * Authentication Types, Mock User Configuration, and Service Layer
+ * Supabase Authentication Types and Service Layer
  * 
- * This module isolates all mock authentication credentials and session
- * management so it can be easily replaced by a real backend API (e.g. Supabase,
- * NextAuth, or custom API) without modifying UI components.
+ * Provides client-side Supabase authentication functions for signing in with
+ * email/password, signing out, and formatting Supabase user sessions.
  */
+
+import { createClient } from "@/utils/supabase/client";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export interface AuthUser {
   id: string;
@@ -15,101 +17,94 @@ export interface AuthUser {
 }
 
 /**
- * Isolated Development Mock Credentials
+ * Formats a Supabase User object into our application's AuthUser model
  */
-const MOCK_DEV_CREDENTIALS = {
-  email: "2024cs0905@svce.ac.in",
-  password: "Student@123",
-  user: {
-    id: "usr_2024cs0905",
-    name: "Aneesh Kashyap K S",
-    email: "2024cs0905@svce.ac.in",
-    studentId: "STU-2024-8891",
-    role: "student" as const,
-  },
-};
+export function formatSupabaseUser(supabaseUser: SupabaseUser): AuthUser {
+  const metadata = supabaseUser.user_metadata || {};
+  const email = supabaseUser.email || "";
 
-const AUTH_STORAGE_KEY = "student_portal_auth_session_v1";
+  // Extract display name from user metadata or email prefix
+  const name =
+    metadata.full_name ||
+    metadata.name ||
+    (email ? email.split("@")[0] : "Student");
 
-/**
- * Safely loads the authenticated user from localStorage.
- * Password is NEVER stored or read from localStorage.
- */
-export function getStoredAuthUser(): AuthUser | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
+  // Extract or generate student ID
+  const studentId =
+    metadata.student_id ||
+    metadata.studentId ||
+    (email ? email.split("@")[0].toUpperCase() : "STU-2024");
 
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      typeof parsed.id === "string" &&
-      typeof parsed.email === "string" &&
-      typeof parsed.name === "string"
-    ) {
-      return parsed as AuthUser;
-    }
-    return null;
-  } catch (error) {
-    console.warn("Failed to parse authenticated session from localStorage:", error);
-    return null;
-  }
+  return {
+    id: supabaseUser.id,
+    name,
+    email,
+    studentId,
+    role: "student",
+  };
 }
 
 /**
- * Persists only the non-sensitive AuthUser object in localStorage.
- */
-export function setStoredAuthUser(user: AuthUser): void {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  } catch (error) {
-    console.warn("Failed to store authenticated session to localStorage:", error);
-  }
-}
-
-/**
- * Clears the authenticated session from localStorage.
- */
-export function clearStoredAuthUser(): void {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-  } catch (error) {
-    console.warn("Failed to remove authenticated session from localStorage:", error);
-  }
-}
-
-/**
- * Authentication service function.
- * Validates credentials against development mock data.
+ * Authenticates user credentials against Supabase Auth using email and password.
  */
 export async function authenticateCredentials(
   email: string,
   password: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  // Simulate network latency (250ms) for realistic UX and loading states
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
 
-  const cleanEmail = email.trim().toLowerCase();
-  const targetEmail = MOCK_DEV_CREDENTIALS.email.toLowerCase();
+    if (error) {
+      return {
+        success: false,
+        error: error.message || "Invalid email or password. Please check your credentials.",
+      };
+    }
 
-  if (cleanEmail === targetEmail && password === MOCK_DEV_CREDENTIALS.password) {
+    if (!data.user) {
+      return {
+        success: false,
+        error: "Authentication failed. No user returned from authentication service.",
+      };
+    }
+
     return {
       success: true,
-      user: MOCK_DEV_CREDENTIALS.user,
+      user: formatSupabaseUser(data.user),
+    };
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return {
+      success: false,
+      error: "An unexpected error occurred during authentication. Please try again.",
     };
   }
+}
 
-  return {
-    success: false,
-    error: "Invalid institutional email or password. Please check your credentials.",
-  };
+/**
+ * Signs out the current user session from Supabase.
+ */
+export async function signOutUser(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return {
+      success: false,
+      error: "An unexpected error occurred during sign out.",
+    };
+  }
 }

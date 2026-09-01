@@ -5,21 +5,26 @@ import AssignmentList from "@/components/AssignmentList";
 import Announcements from "@/components/Announcements";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAssignments } from "@/lib/useAssignments";
+import { useProfile } from "@/lib/useProfile";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function Home() {
   const { user } = useAuth();
+  const { profile } = useProfile();
   const { assignments, pendingCount, completeAssignment, completeOne } =
     useAssignments();
 
   const cards: StatCardProps[] = [
     {
       title: "Attendance",
-      value: "85%",
-      progress: 85,
+      value: profile.attendance,
+      progress: profile.attendancePercent,
       description: "Overall lecture and lab presence",
-      status: "Good Standing",
-      statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800",
+      status: profile.attendancePercent >= 75 ? "Good Standing" : "Low Attendance",
+      statusColor:
+        profile.attendancePercent >= 75
+          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800"
+          : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
       icon: (
         <svg
           className="w-6 h-6 text-emerald-600 dark:text-emerald-400"
@@ -38,9 +43,9 @@ export default function Home() {
     },
     {
       title: "CGPA",
-      value: "8.5",
+      value: profile.cgpa,
       description: "Cumulative Grade Point Average",
-      status: "Distinction",
+      status: parseFloat(profile.cgpa) >= 8.0 ? "Distinction" : "First Class",
       statusColor: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800",
       icon: (
         <svg
@@ -94,6 +99,8 @@ export default function Home() {
     },
   ];
 
+  const studentDisplayName = profile.name || user?.name || "Student";
+
   return (
     <ProtectedRoute>
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -103,7 +110,7 @@ export default function Home() {
             Student Dashboard
           </h1>
           <p className="mt-2 text-base sm:text-lg text-slate-600 dark:text-slate-400">
-            Welcome back, <span className="font-semibold text-slate-900 dark:text-slate-100">{user?.name || "Student"}</span> • Academic workspace
+            Welcome back, <span className="font-semibold text-slate-900 dark:text-slate-100">{studentDisplayName}</span> • Academic workspace
           </p>
         </div>
 

@@ -12,10 +12,10 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleSave = (
+  const handleSave = async (
     updated: Partial<StudentProfile>
-  ): { success: boolean; errors?: Record<string, string> } => {
-    const result = updateProfile(updated);
+  ): Promise<{ success: boolean; errors?: Record<string, string> }> => {
+    const result = await updateProfile(updated);
     if (result.success) {
       setIsEditing(false);
       setSuccessMessage("Profile information updated and saved successfully!");
