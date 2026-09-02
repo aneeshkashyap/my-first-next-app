@@ -1,5 +1,5 @@
 import React from "react";
-import { SubjectPerformance } from "@/lib/mockData";
+import { SubjectPerformance } from "@/lib/useAnalytics";
 
 export interface SubjectPerformanceListProps {
   performanceData: SubjectPerformance[];

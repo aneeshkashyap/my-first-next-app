@@ -1,5 +1,5 @@
 import React from "react";
-import { SemesterTrend, SubjectPerformance } from "@/lib/mockData";
+import { SemesterTrend, SubjectPerformance } from "@/lib/useAnalytics";
 
 export interface PerformanceOverviewProps {
   cgpa: string;

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SemesterTrend } from "@/lib/mockData";
+import { SemesterTrend } from "@/lib/useAnalytics";
 
 export interface SemesterTrendChartProps {
   trends: SemesterTrend[];

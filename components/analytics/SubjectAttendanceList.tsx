@@ -1,5 +1,5 @@
 import React from "react";
-import { SubjectAttendance } from "@/lib/mockData";
+import { SubjectAttendance } from "@/lib/useAnalytics";
 
 export interface SubjectAttendanceListProps {
   attendanceData: SubjectAttendance[];

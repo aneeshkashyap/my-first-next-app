@@ -33,9 +33,12 @@ export default function ProfileView({ profile, onEdit }: ProfileViewProps) {
         {/* Avatar */}
         <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center text-2xl font-bold shadow-md ring-4 ring-indigo-50 dark:ring-indigo-950/50 mb-4">
           {profile.name
-            .split(" ")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
             .map((n) => n[0])
-            .join("")}
+            .join("")
+            .toUpperCase() || "SD"}
         </div>
 
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">

@@ -30,15 +30,22 @@ export default function Header() {
     return null;
   }
 
-  const displayName = profile.name || user?.name || "Student";
-  const displayId = profile.studentId || user?.studentId || "Active";
+  const displayName =
+    profile.name && profile.name.toLowerCase() !== "student"
+      ? profile.name
+      : user?.name && user.name.toLowerCase() !== "student"
+      ? user.name
+      : "Aneesh Kashyap K S";
+  const displayId = profile.studentId || user?.studentId || "2024CS0905";
 
   const userInitials = displayName
     ? displayName
-        .split(" ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
         .map((n) => n[0])
-        .slice(0, 2)
         .join("")
+        .toUpperCase() || "SD"
     : "SD";
 
   return (

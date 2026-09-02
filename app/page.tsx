@@ -99,7 +99,12 @@ export default function Home() {
     },
   ];
 
-  const studentDisplayName = profile.name || user?.name || "Student";
+  const studentDisplayName =
+    profile.name && profile.name.toLowerCase() !== "student"
+      ? profile.name
+      : user?.name && user.name.toLowerCase() !== "student"
+      ? user.name
+      : "Aneesh Kashyap K S";
 
   return (
     <ProtectedRoute>

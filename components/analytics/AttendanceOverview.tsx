@@ -1,6 +1,6 @@
 import React from "react";
 import ProgressBar from "@/components/ProgressBar";
-import { SubjectAttendance } from "@/lib/mockData";
+import { SubjectAttendance } from "@/lib/useAnalytics";
 
 export interface AttendanceOverviewProps {
   attendanceData: SubjectAttendance[];

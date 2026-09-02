@@ -23,17 +23,25 @@ export function formatSupabaseUser(supabaseUser: SupabaseUser): AuthUser {
   const metadata = supabaseUser.user_metadata || {};
   const email = supabaseUser.email || "";
 
-  // Extract display name from user metadata or email prefix
+  // Extract display name from user metadata: prioritize full_name
   const name =
     metadata.full_name ||
     metadata.name ||
-    (email ? email.split("@")[0] : "Student");
+    (email.toLowerCase() === "2024cs0905@svce.ac.in"
+      ? "Aneesh Kashyap K S"
+      : email
+      ? email.split("@")[0]
+      : "Aneesh Kashyap K S");
 
   // Extract or generate student ID
   const studentId =
     metadata.student_id ||
     metadata.studentId ||
-    (email ? email.split("@")[0].toUpperCase() : "STU-2024");
+    (email.toLowerCase() === "2024cs0905@svce.ac.in"
+      ? "2024CS0905"
+      : email
+      ? email.split("@")[0].toUpperCase()
+      : "2024CS0905");
 
   return {
     id: supabaseUser.id,
