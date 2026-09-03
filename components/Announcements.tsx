@@ -1,12 +1,26 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import { createClient } from "@/utils/supabase/client";
 
 export interface Announcement {
-  id: number;
-  userId?: number;
+  id: number | string;
+  userId?: number | string;
   title: string;
   body: string;
+  createdAt?: string | null;
+}
+
+interface SupabaseAnnouncementRow {
+  id: number | string;
+  user_id?: string | null;
+  student_id?: string | null;
+  title?: string | null;
+  body?: string | null;
+  content?: string | null;
+  description?: string | null;
+  message?: string | null;
+  created_at?: string | null;
 }
 
 export default function Announcements() {
@@ -14,69 +28,76 @@ export default function Announcements() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [reloadTrigger, setReloadTrigger] = useState<number>(0);
 
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch(
-        "https://jsonplaceholder.typicode.com/posts?_limit=5"
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch announcements (HTTP ${response.status})`);
-      }
-
-      const data: Announcement[] = await response.json();
-      // Ensure exactly 5 announcements are set
-      setAnnouncements(data.slice(0, 5));
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred while fetching announcements.");
-      }
-    } finally {
-      setLoading(false);
-    }
+  const fetchAnnouncements = useCallback(() => {
+    setLoading(true);
+    setReloadTrigger((prev) => prev + 1);
   }, []);
 
   useEffect(() => {
-    let ignore = false;
-    async function load() {
+    let isMounted = true;
+    const supabase = createClient();
+
+    async function loadAnnouncements() {
       try {
-        const response = await fetch(
-          "https://jsonplaceholder.typicode.com/posts?_limit=5"
-        );
-        if (!response.ok) {
-          throw new Error(`Failed to fetch announcements (HTTP ${response.status})`);
-        }
-        const data: Announcement[] = await response.json();
-        if (!ignore) {
-          setAnnouncements(data.slice(0, 5));
+        const { data, error: fetchError } = await supabase
+          .from("announcements")
+          .select("*")
+          .order("id", { ascending: false });
+
+        if (!isMounted) return;
+
+        if (fetchError) {
+          console.error("Failed to fetch announcements from Supabase:", fetchError);
+          setError(fetchError.message);
+          setAnnouncements([]);
+        } else {
+          const rows = (data || []) as SupabaseAnnouncementRow[];
+          const mapped: Announcement[] = rows.map((row) => ({
+            id: row.id,
+            userId: row.user_id || row.student_id || undefined,
+            title: row.title || "Untitled Announcement",
+            body:
+              row.body ||
+              row.content ||
+              row.description ||
+              row.message ||
+              "No details provided.",
+            createdAt: row.created_at || null,
+          }));
+
+          setAnnouncements(mapped);
+          setError(null);
         }
       } catch (err: unknown) {
-        if (!ignore) {
-          if (err instanceof Error) {
-            setError(err.message);
-          } else {
-            setError("An unexpected error occurred while fetching announcements.");
-          }
+        if (isMounted) {
+          const message =
+            err instanceof Error
+              ? err.message
+              : "An unexpected error occurred while fetching announcements.";
+          console.error("Failed to load announcements:", err);
+          setError(message);
+          setAnnouncements([]);
         }
       } finally {
-        if (!ignore) {
+        if (isMounted) {
           setLoading(false);
         }
       }
     }
-    load();
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
-  const filteredAnnouncements = announcements.filter((announcement) =>
-    announcement.title.toLowerCase().includes(searchTerm.toLowerCase().trim())
+    loadAnnouncements();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [reloadTrigger]);
+
+  const filteredAnnouncements = announcements.filter(
+    (announcement) =>
+      announcement.title.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
+      announcement.body.toLowerCase().includes(searchTerm.toLowerCase().trim())
   );
 
   return (

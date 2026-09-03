@@ -14,15 +14,23 @@ export default function Home() {
   const { assignments, pendingCount, completeAssignment, completeOne } =
     useAssignments();
 
+  const attendancePercent = profile.attendancePercent;
+  const attendanceStatus =
+    attendancePercent >= 75 ? "Good Standing" : "Low Attendance";
+
+  const cgpaValue = profile.cgpa;
+  const parsedCgpa = parseFloat(cgpaValue);
+  const cgpaStatus = parsedCgpa >= 8.0 ? "Distinction" : "First Class";
+
   const cards: StatCardProps[] = [
     {
       title: "Attendance",
       value: profile.attendance,
-      progress: profile.attendancePercent,
+      progress: attendancePercent,
       description: "Overall lecture and lab presence",
-      status: profile.attendancePercent >= 75 ? "Good Standing" : "Low Attendance",
+      status: attendanceStatus,
       statusColor:
-        profile.attendancePercent >= 75
+        attendancePercent >= 75
           ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800"
           : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
       icon: (
@@ -43,10 +51,11 @@ export default function Home() {
     },
     {
       title: "CGPA",
-      value: profile.cgpa,
+      value: cgpaValue,
       description: "Cumulative Grade Point Average",
-      status: parseFloat(profile.cgpa) >= 8.0 ? "Distinction" : "First Class",
-      statusColor: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800",
+      status: cgpaStatus,
+      statusColor:
+        "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800",
       icon: (
         <svg
           className="w-6 h-6 text-blue-600 dark:text-blue-400"
@@ -106,6 +115,8 @@ export default function Home() {
       ? user.name
       : "Aneesh Kashyap K S";
 
+  const currentSemester = profile.semester || "6th Semester (Spring 2026)";
+
   return (
     <ProtectedRoute>
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
@@ -115,7 +126,11 @@ export default function Home() {
             Student Dashboard
           </h1>
           <p className="mt-2 text-base sm:text-lg text-slate-600 dark:text-slate-400">
-            Welcome back, <span className="font-semibold text-slate-900 dark:text-slate-100">{studentDisplayName}</span> • Academic workspace
+            Welcome back,{" "}
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
+              {studentDisplayName}
+            </span>{" "}
+            • {currentSemester}
           </p>
         </div>
 

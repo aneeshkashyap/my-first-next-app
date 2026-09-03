@@ -5,7 +5,7 @@ import ProfileView from "@/components/profile/ProfileView";
 import ProfileEditForm from "@/components/profile/ProfileEditForm";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useProfile } from "@/lib/useProfile";
-import { StudentProfile } from "@/lib/mockData";
+import { StudentProfile } from "@/lib/useProfile";
 
 export default function ProfilePage() {
   const { profile, updateProfile } = useProfile();

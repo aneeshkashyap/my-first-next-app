@@ -1,6 +1,6 @@
 import React from "react";
 import ProgressBar from "@/components/ProgressBar";
-import { StudentProfile } from "@/lib/mockData";
+import { StudentProfile } from "@/lib/useProfile";
 
 export interface ProfileViewProps {
   profile: StudentProfile;

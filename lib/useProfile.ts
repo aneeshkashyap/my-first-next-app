@@ -5,6 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { createClient } from "@/utils/supabase/client";
 
 export interface StudentProfile {
+  id?: string;
   name: string;
   studentId: string;
   department: string;
@@ -16,139 +17,51 @@ export interface StudentProfile {
   cgpa: string;
   attendance: string;
   attendancePercent: number;
+  avatarUrl?: string | null;
 }
 
 export type ProfileDataSource = "supabase" | "fallback" | "loading";
 
-/**
- * Normalizes and extracts student profile data from Supabase `profiles` table row.
- * - Requirement 1: profiles.full_name is the primary display name.
- * - Requirement 2: Do NOT use student_id or email prefix as display name when full_name exists.
- * - Requirement 6: Remove any fallback that incorrectly resolves to "Student" when full_name exists.
- */
-function normalizeSupabaseProfile(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any,
-  fallbackUserEmail?: string,
-  fallbackUserName?: string,
-  fallbackStudentId?: string
-): StudentProfile {
-  const email = (data?.email || fallbackUserEmail || "").trim();
-  const emailPrefix = email ? email.split("@")[0].trim() : "";
+interface SupabaseProfileRow {
+  id: string;
+  student_id: string;
+  full_name: string;
+  department: string;
+  year: string;
+  semester: string;
+  batch: string;
+  phone: string;
+  institutional_email: string;
+  avatar_url: string | null;
+  created_at: string;
+}
 
-  const studentId =
-    data?.student_id ||
-    data?.studentId ||
-    data?.roll_no ||
-    data?.roll_number ||
-    fallbackStudentId ||
-    "2024CS0905";
+interface SupabaseAttendanceRow {
+  attended: number;
+  total: number;
+}
 
-  // 1. Use profiles.full_name as the primary display name.
-  // 2. Do not use student_id or email prefix as display name when full_name exists.
-  const rawFullName = typeof data?.full_name === "string" ? data.full_name.trim() : "";
-  const rawName = typeof data?.name === "string" ? data.name.trim() : "";
-  const rawStudentName = typeof data?.student_name === "string" ? data.student_name.trim() : "";
-
-  let name = "";
-  if (rawFullName.length > 0) {
-    name = rawFullName;
-  } else if (
-    rawName.length > 0 &&
-    rawName.toLowerCase() !== String(studentId).toLowerCase() &&
-    rawName.toLowerCase() !== emailPrefix.toLowerCase()
-  ) {
-    name = rawName;
-  } else if (
-    rawStudentName.length > 0 &&
-    rawStudentName.toLowerCase() !== String(studentId).toLowerCase() &&
-    rawStudentName.toLowerCase() !== emailPrefix.toLowerCase()
-  ) {
-    name = rawStudentName;
-  } else if (
-    fallbackUserName &&
-    fallbackUserName.toLowerCase() !== String(studentId).toLowerCase() &&
-    fallbackUserName.toLowerCase() !== emailPrefix.toLowerCase() &&
-    fallbackUserName.toLowerCase() !== "student"
-  ) {
-    name = fallbackUserName;
-  } else if (email.toLowerCase() === "2024cs0905@svce.ac.in") {
-    name = "Aneesh Kashyap K S";
-  } else {
-    name = rawFullName || rawName || rawStudentName || fallbackUserName || "Aneesh Kashyap K S";
-  }
-
-  const department =
-    data?.department ||
-    data?.dept ||
-    data?.major ||
-    "Computer Science & Engineering";
-
-  const semester =
-    data?.semester ||
-    data?.current_semester ||
-    "6th Semester (Spring 2026)";
-
-  const year =
-    data?.year ||
-    data?.academic_year ||
-    "3rd Year";
-
-  const phone =
-    data?.phone ||
-    data?.phone_number ||
-    data?.mobile ||
-    "+91 98765 43210";
-
-  const batch =
-    data?.batch ||
-    data?.academic_batch ||
-    "2024 - 2028";
-
-  const cgpa =
-    data?.cgpa !== undefined && data?.cgpa !== null ? String(data.cgpa) : "8.5";
-
-  const attendance =
-    data?.attendance !== undefined && data?.attendance !== null
-      ? (String(data.attendance).includes("%") ? String(data.attendance) : `${data.attendance}%`)
-      : "85%";
-
-  const parsedPercent = parseFloat(attendance.replace("%", ""));
-  const attendancePercent =
-    typeof data?.attendance_percent === "number"
-      ? data.attendance_percent
-      : typeof data?.attendancePercent === "number"
-      ? data.attendancePercent
-      : isNaN(parsedPercent)
-      ? 85
-      : parsedPercent;
-
-  return {
-    name,
-    studentId,
-    department,
-    semester,
-    year,
-    email,
-    phone,
-    batch,
-    cgpa,
-    attendance,
-    attendancePercent,
-  };
+interface SupabaseSemesterTrendRow {
+  semester: string;
+  semester_order: number;
+  sgpa: number;
+  cgpa: number;
+  credits: number;
+  status: string;
 }
 
 export function useProfile() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+
   const [profile, setProfile] = useState<StudentProfile>(() => {
     const email = user?.email || "";
     const studentId = user?.studentId || "2024CS0905";
-
-    // Determine default name avoiding "Student" fallback when real full name is available
-    let initialName = "Aneesh Kashyap K S";
-    if (user?.name && user.name.toLowerCase() !== "student" && user.name.toLowerCase() !== studentId.toLowerCase()) {
-      initialName = user.name;
-    }
+    const initialName =
+      user?.name &&
+      user.name.toLowerCase() !== "student" &&
+      user.name.toLowerCase() !== studentId.toLowerCase()
+        ? user.name
+        : "Aneesh Kashyap K S";
 
     return {
       name: initialName,
@@ -160,97 +73,132 @@ export function useProfile() {
       phone: "+91 98765 43210",
       batch: "2024 - 2028",
       cgpa: "8.5",
-      attendance: "85%",
-      attendancePercent: 85,
+      attendance: "84%",
+      attendancePercent: 84,
+      avatarUrl: null,
     };
   });
 
   const [dataSource, setDataSource] = useState<ProfileDataSource>("loading");
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
 
-  // Retrieve student profile directly from Supabase profiles table using auth.uid() (user.id)
   useEffect(() => {
+    if (authLoading || !user?.id) {
+      return;
+    }
+
+    const currentUser = user;
     let isMounted = true;
     const supabase = createClient();
+    const userId = currentUser.id;
 
-    async function fetchSupabaseProfile() {
-      if (!user) {
-        if (isMounted) {
-          setDataSource("fallback");
-          setIsLoaded(true);
-        }
-        return;
-      }
-
-      console.info(`[Supabase Auth] Querying 'profiles' table with auth.uid() == '${user.id}' (${user.email})...`);
-
+    async function fetchSupabaseProfileData() {
       try {
-        // Query Supabase profiles table using auth.uid(), selecting all fields including full_name
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle();
+        const [profileRes, attendanceRes, trendRes] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select(
+              "id, student_id, full_name, department, year, semester, batch, phone, institutional_email, avatar_url, created_at"
+            )
+            .eq("id", userId)
+            .maybeSingle(),
+          supabase
+            .from("subject_attendance")
+            .select("attended, total")
+            .eq("user_id", userId),
+          supabase
+            .from("semester_trends")
+            .select("semester, semester_order, sgpa, cgpa, credits, status")
+            .eq("user_id", userId)
+            .order("semester_order", { ascending: false })
+            .limit(1),
+        ]);
 
         if (!isMounted) return;
 
-        if (error) {
-          console.warn("[Supabase Profiles Query Notice]:", error.message);
-          setSupabaseError(error.message);
+        if (profileRes.error) {
+          console.warn("[Supabase Profiles Notice]:", profileRes.error.message);
+          setSupabaseError(profileRes.error.message);
         }
 
-        if (data) {
-          console.info("[Supabase Profiles] Record found in database:", data);
-          const normalized = normalizeSupabaseProfile(
-            data,
-            user.email,
-            user.name,
-            user.studentId
-          );
+        // 1. Calculate live attendance from subject_attendance
+        let attendanceStr = "84%";
+        let attendancePct = 84;
+        if (!attendanceRes.error && attendanceRes.data && attendanceRes.data.length > 0) {
+          const rows = attendanceRes.data as SupabaseAttendanceRow[];
+          const sumAttended = rows.reduce((sum, r) => sum + (r.attended || 0), 0);
+          const sumTotal = rows.reduce((sum, r) => sum + (r.total || 0), 0);
+          if (sumTotal > 0) {
+            attendancePct = Math.round((sumAttended / sumTotal) * 100);
+            attendanceStr = `${attendancePct}%`;
+          }
+        }
+
+        // 2. Determine latest CGPA from semester_trends
+        let cgpaStr = "8.5";
+        if (!trendRes.error && trendRes.data && trendRes.data.length > 0) {
+          const latestTrend = trendRes.data[0] as SupabaseSemesterTrendRow;
+          const parsedCgpa = parseFloat(String(latestTrend.cgpa));
+          if (!Number.isNaN(parsedCgpa)) {
+            cgpaStr = parsedCgpa.toString();
+          }
+        }
+
+        // 3. Map profile identity fields from public.profiles
+        if (profileRes.data) {
+          const data = profileRes.data as SupabaseProfileRow;
+          const normalized: StudentProfile = {
+            id: data.id,
+            name: data.full_name || currentUser.name || "Aneesh Kashyap K S",
+            studentId: data.student_id || currentUser.studentId || "2024CS0905",
+            department: data.department || "Computer Science & Engineering",
+            semester: data.semester || "6th Semester (Spring 2026)",
+            year: data.year || "3rd Year",
+            batch: data.batch || "2024 - 2028",
+            phone: data.phone || "+91 98765 43210",
+            email: data.institutional_email || currentUser.email || "2024cs0905@svce.ac.in",
+            avatarUrl: data.avatar_url || null,
+            cgpa: cgpaStr,
+            attendance: attendanceStr,
+            attendancePercent: attendancePct,
+          };
+
           setProfile(normalized);
           setDataSource("supabase");
+          setSupabaseError(null);
         } else {
-          // If query returns null or permission denied, populate from authenticated user metadata (never "Student")
-          const fallbackName =
-            user.name && user.name.toLowerCase() !== "student"
-              ? user.name
-              : "Aneesh Kashyap K S";
-
-          setProfile({
-            name: fallbackName,
-            studentId: user.studentId || "2024CS0905",
-            department: "Computer Science & Engineering",
-            semester: "6th Semester (Spring 2026)",
-            year: "3rd Year",
-            email: user.email || "",
-            phone: "+91 98765 43210",
-            batch: "2024 - 2028",
-            cgpa: "8.5",
-            attendance: "85%",
-            attendancePercent: 85,
-          });
+          // If no profile row found, fallback using authenticated session metadata
+          setProfile((prev) => ({
+            ...prev,
+            name: currentUser.name || prev.name,
+            studentId: currentUser.studentId || prev.studentId,
+            email: currentUser.email || prev.email,
+            cgpa: cgpaStr,
+            attendance: attendanceStr,
+            attendancePercent: attendancePct,
+          }));
           setDataSource("fallback");
         }
       } catch (err) {
-        console.error("[Supabase Profiles] Error fetching profile row:", err);
+        console.error("[Supabase Profiles] Error fetching profile data:", err);
         if (isMounted) {
           setDataSource("fallback");
         }
       } finally {
         if (isMounted) {
-          setIsLoaded(true);
+          setDataLoaded(true);
         }
       }
     }
 
-    fetchSupabaseProfile();
+    fetchSupabaseProfileData();
 
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [authLoading, user]);
 
   const updateProfile = useCallback(
     async (
@@ -258,7 +206,6 @@ export function useProfile() {
     ): Promise<{ success: boolean; errors?: Record<string, string> }> => {
       const errors: Record<string, string> = {};
 
-      // Form Validations
       if (updatedData.name !== undefined && !updatedData.name.trim()) {
         errors.name = "Student name is required.";
       }
@@ -293,41 +240,33 @@ export function useProfile() {
       setIsSaving(true);
       setProfile(nextProfile);
 
-      // Persist directly to Supabase profiles table using auth.uid()
+      // Persist only verified columns to public.profiles scoped to auth.uid() (user.id)
       if (user?.id) {
         const supabase = createClient();
         try {
           const payload = {
-            id: user.id,
-            name: nextProfile.name,
             full_name: nextProfile.name,
-            email: nextProfile.email,
             phone: nextProfile.phone,
-            phone_number: nextProfile.phone,
             department: nextProfile.department,
-            semester: nextProfile.semester,
             year: nextProfile.year,
+            semester: nextProfile.semester,
             batch: nextProfile.batch,
             student_id: nextProfile.studentId,
-            cgpa: nextProfile.cgpa,
-            attendance: nextProfile.attendance,
-            attendance_percent: nextProfile.attendancePercent,
-            updated_at: new Date().toISOString(),
+            institutional_email: nextProfile.email,
           };
 
-          console.info("[Supabase Profiles] Upserting record for auth.uid():", user.id);
           const { error } = await supabase
             .from("profiles")
-            .upsert(payload, { onConflict: "id" });
+            .update(payload)
+            .eq("id", user.id);
 
           if (error) {
-            console.warn("[Supabase Profiles] Upsert notice:", error.message);
+            console.warn("[Supabase Profiles] Update notice:", error.message);
           } else {
-            console.info("[Supabase Profiles] Profile upserted successfully.");
             setDataSource("supabase");
           }
         } catch (err) {
-          console.error("[Supabase Profiles] Could not persist profile to Supabase:", err);
+          console.error("[Supabase Profiles] Could not persist profile update:", err);
         } finally {
           setIsSaving(false);
         }
@@ -339,6 +278,8 @@ export function useProfile() {
     },
     [profile, user]
   );
+
+  const isLoaded = !authLoading && (!user || dataLoaded);
 
   return {
     profile,

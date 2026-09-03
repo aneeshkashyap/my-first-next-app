@@ -1,135 +1,193 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Assignment } from "@/components/AssignmentList";
-import { initialMockAssignments } from "@/lib/mockData";
+import { useAuth } from "@/components/AuthProvider";
+import { createClient } from "@/utils/supabase/client";
 
-const STORAGE_KEY = "student_portal_assignments_v1";
-
-const assignmentListeners = new Set<() => void>();
-
-function notifyAssignmentListeners() {
-  assignmentListeners.forEach((listener) => listener());
+interface SupabaseAssignmentCourse {
+  course_code: string;
+  course_name: string;
 }
 
-function subscribeAssignments(callback: () => void) {
-  assignmentListeners.add(callback);
-  const handleStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) {
-      callback();
-    }
-  };
-  window.addEventListener("storage", handleStorage);
-  return () => {
-    assignmentListeners.delete(callback);
-    window.removeEventListener("storage", handleStorage);
-  };
+interface SupabaseAssignmentRow {
+  id: number;
+  student_id: string;
+  course_id: number | null;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  status: string;
+  created_at: string | null;
+  courses: SupabaseAssignmentCourse | SupabaseAssignmentCourse[] | null;
 }
-
-let cachedAssignmentsJson = "";
-let cachedAssignments: Assignment[] = initialMockAssignments;
 
 /**
- * Safely parses and loads assignments from localStorage,
- * gracefully falling back to initialMockAssignments on errors or missing data.
+ * Formats a date string (e.g. "2026-03-01") into human-readable format ("March 1, 2026")
+ * without timezone day-shifting.
  */
-function getAssignmentsSnapshot(): Assignment[] {
-  if (typeof window === "undefined") {
-    return initialMockAssignments;
+function formatDueDate(value: string | null): string {
+  if (!value) return "No due date";
+
+  const parts = value.split("-");
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const date = new Date(year, monthIndex, day);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
   }
 
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return initialMockAssignments;
-    }
-
-    if (raw === cachedAssignmentsJson) {
-      return cachedAssignments;
-    }
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return initialMockAssignments;
-    }
-
-    // Merge saved data with initialMockAssignments to guarantee structural and type safety
-    const result = initialMockAssignments.map((mockItem) => {
-      const savedItem = parsed.find(
-        (item: unknown) =>
-          typeof item === "object" &&
-          item !== null &&
-          "id" in item &&
-          (item as Assignment).id === mockItem.id
-      );
-
-      if (savedItem && typeof savedItem.status === "string") {
-        return {
-          ...mockItem,
-          status: savedItem.status,
-        };
-      }
-      return mockItem;
+  const fallbackDate = new Date(value);
+  if (!Number.isNaN(fallbackDate.getTime())) {
+    return fallbackDate.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
     });
-
-    cachedAssignmentsJson = raw;
-    cachedAssignments = result;
-    return cachedAssignments;
-  } catch (error) {
-    console.warn("Failed to retrieve or parse assignments from localStorage:", error);
-    return initialMockAssignments;
   }
-}
 
-function getServerAssignmentsSnapshot(): Assignment[] {
-  return initialMockAssignments;
+  return value;
 }
 
 /**
- * Safely persists assignments to localStorage
+ * Extracts course_name from Supabase relational course object or array.
  */
-function saveAssignmentsToStorage(assignments: Assignment[]): void {
-  if (typeof window === "undefined") return;
-
-  try {
-    const json = JSON.stringify(assignments);
-    localStorage.setItem(STORAGE_KEY, json);
-    cachedAssignmentsJson = json;
-    cachedAssignments = assignments;
-    notifyAssignmentListeners();
-  } catch (error) {
-    console.warn("Failed to save assignments to localStorage:", error);
+function extractCourseName(
+  courses: SupabaseAssignmentCourse | SupabaseAssignmentCourse[] | null
+): string {
+  if (!courses) return "General";
+  if (Array.isArray(courses)) {
+    return courses[0]?.course_name || "General";
   }
+  return courses.course_name || "General";
+}
+
+/**
+ * Maps database row to UI Assignment object.
+ */
+function mapToAssignment(row: SupabaseAssignmentRow): Assignment {
+  return {
+    id: row.id,
+    title: row.title,
+    subject: extractCourseName(row.courses),
+    dueDate: formatDueDate(row.due_date),
+    status: row.status,
+  };
 }
 
 export function useAssignments() {
-  const assignments = useSyncExternalStore(
-    subscribeAssignments,
-    getAssignmentsSnapshot,
-    getServerAssignmentsSnapshot
-  );
+  const { user, isLoading: authLoading } = useAuth();
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+
+  useEffect(() => {
+    if (authLoading || !user) {
+      return;
+    }
+
+    let isMounted = true;
+    const supabase = createClient();
+    const studentId = user.id;
+
+    async function fetchAssignments() {
+      try {
+        const { data, error } = await supabase
+          .from("assignments")
+          .select(`
+            id,
+            student_id,
+            course_id,
+            title,
+            description,
+            due_date,
+            status,
+            created_at,
+            courses (
+              course_code,
+              course_name
+            )
+          `)
+          .eq("student_id", studentId)
+          .order("id", { ascending: true });
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.error("Failed to load assignments:", error.message);
+          setAssignments([]);
+        } else {
+          const rows = (data || []) as unknown as SupabaseAssignmentRow[];
+          setAssignments(rows.map(mapToAssignment));
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error("Failed to load assignments:", err);
+          setAssignments([]);
+        }
+      } finally {
+        if (isMounted) {
+          setDataLoaded(true);
+        }
+      }
+    }
+
+    fetchAssignments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authLoading, user, reloadTrigger]);
 
   const completeAssignment = useCallback(
-    (id: string | number) => {
-      const updated = assignments.map((item) =>
-        item.id === id ? { ...item, status: "Completed" } : item
+    async (id: string | number) => {
+      if (!user) return;
+
+      // Optimistically update matching assignment to Completed in local state
+      setAssignments((current) =>
+        current.map((item) =>
+          String(item.id) === String(id)
+            ? { ...item, status: "Completed" }
+            : item
+        )
       );
-      saveAssignmentsToStorage(updated);
+
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("assignments")
+        .update({
+          status: "Completed",
+        })
+        .eq("id", Number(id))
+        .eq("student_id", user.id);
+
+      if (error) {
+        console.error("Failed to complete assignment:", error.message);
+        // Reload from Supabase to restore actual database state
+        setReloadTrigger((prev) => prev + 1);
+      }
     },
-    [assignments]
+    [user]
   );
 
-  const completeOne = useCallback(() => {
+  const completeOne = useCallback(async () => {
+    if (!user) return;
+
     const firstPending = assignments.find(
       (a) => a.status.toLowerCase() !== "completed"
     );
+
     if (!firstPending) return;
 
-    const updated = assignments.map((item) =>
-      item.id === firstPending.id ? { ...item, status: "Completed" } : item
-    );
-    saveAssignmentsToStorage(updated);
-  }, [assignments]);
+    await completeAssignment(firstPending.id);
+  }, [user, assignments, completeAssignment]);
 
   const totalCount = assignments.length;
   const completedCount = assignments.filter(
@@ -139,6 +197,8 @@ export function useAssignments() {
     (a) => a.status.toLowerCase() !== "completed"
   ).length;
 
+  const isLoaded = !authLoading && (!user || dataLoaded);
+
   return {
     assignments,
     pendingCount,
@@ -146,6 +206,6 @@ export function useAssignments() {
     totalCount,
     completeAssignment,
     completeOne,
-    isLoaded: true,
+    isLoaded,
   };
 }

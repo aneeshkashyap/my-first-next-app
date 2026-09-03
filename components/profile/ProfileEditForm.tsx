@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StudentProfile } from "@/lib/mockData";
+import { StudentProfile } from "@/lib/useProfile";
 
 export interface ProfileEditFormProps {
   initialProfile: StudentProfile;
