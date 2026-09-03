@@ -1,36 +1,184 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Student Portal
 
-## Getting Started
+A modern, cloud-native academic portal for college students to track deliverables, course attendance, academic performance, and official campus announcements in real time. Built with Next.js App Router, TypeScript, Tailwind CSS, and a relational Supabase (PostgreSQL) backend.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 📌 Project Overview
+
+The **Student Portal** is a centralized web workspace engineered to simplify student academic life. Designed with clean UX principles and strong data integrity, the portal replaces disconnected spreadsheets and legacy notice boards with an integrated, authenticated dashboard backed by live database services.
+
+All user metrics—from attendance percentages to semester GPAs, interactive assignments, and campus bulletins—are dynamically fetched and persisted in real time via Supabase PostgreSQL tables.
+
+---
+
+## ✨ Key Features
+
+* **Secure Authentication**:
+  * Credential-based authentication powered by Supabase Auth.
+  * Route protection using higher-order client and middleware guards.
+  * Automatic session restoration and secure sign-out.
+* **Student Dashboard**:
+  * High-level academic overview with live metrics.
+  * Weighted attendance summary card with standing status badges.
+  * Cumulative Grade Point Average (CGPA) card with distinction indicators.
+  * Pending assignments count and a single-click "Complete One" workflow.
+  * Dynamic recent announcements bulletin.
+* **Student Profile**:
+  * Comprehensive academic credential view (department, semester, batch, year, ID, email, phone).
+  * In-place editable personal details with real-time validation and database persistence.
+* **Assignment Management**:
+  * Live course deliverable tracking with course codes, subjects, and human-readable due dates.
+  * Optimistic UI status updates with instant database synchronization.
+  * Multi-status tracking (`Pending`, `In Progress`, `Completed`).
+* **Official Campus Announcements**:
+  * Real-time campus notice board with live text search across titles and descriptions.
+  * Loading skeleton placeholders, empty state handling, and automated retry on error.
+* **Academic Analytics**:
+  * **Attendance Analytics**: Weighted attendance aggregation across all enrolled courses, minimum threshold indicators, and automated shortage warnings (< 75%).
+  * **Performance Analytics**: Subject-level internal assessment, external finals, and letter grade points breakdown.
+  * **Semester Progression**: Multi-semester SGPA vs. CGPA growth visual comparison chart across terms.
+
+---
+
+## 🛠 Technology Stack
+
+* **Frontend Framework**: [Next.js](https://nextjs.org/) (App Router, React 19)
+* **Language**: [TypeScript](https://www.typescriptlang.org/) (Strict type safety)
+* **Styling**: [Tailwind CSS](https://tailwindcss.com/) (Responsive layout, sleek modern dark/light aesthetics)
+* **Backend as a Service (BaaS)**: [Supabase](https://supabase.com/)
+* **Database**: [PostgreSQL](https://www.postgresql.org/) (Relational schema with foreign keys)
+* **Authentication**: Supabase Auth
+* **Deployment & CI/CD**: [Vercel](https://vercel.com/) via GitHub
+
+---
+
+## 🗄 Supabase Data Architecture
+
+The application relies on a normalized relational PostgreSQL schema within Supabase:
+
+| Table Name | Description | Key Columns |
+| :--- | :--- | :--- |
+| `public.profiles` | Student identity & contact details | `id` (PK, UUID references `auth.users`), `student_id`, `full_name`, `department`, `year`, `semester`, `batch`, `phone`, `institutional_email`, `avatar_url` |
+| `public.courses` | Master academic course catalog | `id` (PK, BigInt), `course_code`, `course_name`, `credits`, `created_at` |
+| `public.assignments` | Student coursework and deliverables | `id` (PK, BigInt), `student_id` (UUID references `auth.users`), `course_id` (BigInt references `courses`), `title`, `description`, `due_date`, `status` |
+| `public.subject_attendance` | Course-level lecture and lab attendance | `id` (PK, UUID), `user_id` (UUID references `auth.users`), `code`, `subject`, `attended`, `total`, `faculty` |
+| `public.subject_performance` | Course marks, grade points, and letter grades | `id` (PK, UUID), `user_id` (UUID references `auth.users`), `code`, `subject`, `credits`, `internal_marks`, `external_marks`, `total_marks`, `grade`, `grade_points` |
+| `public.semester_trends` | Historical term progression and GPA growth | `id` (PK, UUID), `user_id` (UUID references `auth.users`), `semester`, `semester_order`, `sgpa`, `cgpa`, `credits`, `status` |
+| `public.announcements` | Campus-wide and departmental bulletins | `id` (PK, BigInt), `title`, `body`, `created_at` |
+
+---
+
+## 🔒 Security & Privacy
+
+* **User Identity Scoping**: Every private query and mutation is filtered explicitly by the authenticated user's ID (`auth.uid()`), preventing cross-tenant data access.
+* **Row Level Security (RLS)**: Database tables enforce strict Postgres RLS policies to guarantee students can only query and mutate their own academic records.
+* **Key Separation**: The client application only consumes public, browser-safe publishable credentials (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`). Administrative secret keys are never bundled into client-side code.
+* **Environment Isolation**: Database connection secrets and service keys are strictly isolated within local `.env.local` files and Vercel encrypted environment variables.
+
+---
+
+## 📂 Project Structure
+
+```text
+my-first-next-app/
+├── app/
+│   ├── analytics/          # Academic analytics page & trend charts
+│   ├── announcements/      # Campus bulletins notice board
+│   ├── assignments/        # Student coursework deliverables page
+│   ├── login/              # Student sign-in page
+│   ├── profile/            # Academic identity & profile editing page
+│   ├── globals.css         # Global styling rules & CSS variables
+│   ├── layout.tsx          # Root application layout & navigation shell
+│   └── page.tsx            # Main Student Dashboard
+├── components/
+│   ├── analytics/          # Attendance & performance visualization cards
+│   ├── profile/            # Profile display and inline edit forms
+│   ├── Announcements.tsx   # Announcements list & live search component
+│   ├── AssignmentList.tsx  # Deliverables table & status toggle component
+│   ├── AuthProvider.tsx    # Supabase session & user context provider
+│   ├── Header.tsx          # Responsive navigation header & user avatar
+│   ├── ProgressBar.tsx     # Animated progress bar component
+│   ├── ProtectedRoute.tsx  # Authentication wrapper for secured routes
+│   └── StatCard.tsx        # Modular dashboard summary card
+├── lib/
+│   ├── auth.ts             # Supabase Auth helper & user session parser
+│   ├── useAnalytics.ts     # Supabase hook for subject marks & attendance
+│   ├── useAssignments.ts   # Supabase hook for coursework management
+│   └── useProfile.ts       # Canonical hook for student profile & metrics
+├── utils/
+│   └── supabase/
+│       ├── client.ts       # Browser-side Supabase client singleton
+│       └── server.ts       # Server-side Supabase client (SSR / Actions)
+├── public/                 # Static assets and icons
+└── README.md               # Project documentation
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🚀 Installation & Local Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Clone the Repository
+```bash
+git clone https://github.com/aneeshkashyap/my-first-next-app.git
+cd my-first-next-app
+```
 
-## Learn More
+### 2. Install Dependencies
+```bash
+npm install
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Configure Environment Variables
+Create a `.env.local` file in the project root:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Start the Local Development Server
+```bash
+npm run dev
+```
 
-## Deploy on Vercel
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🌐 Production Deployment
+
+The project is configured for continuous zero-downtime deployments using **Vercel**:
+
+1. Push your changes to the `main` branch on GitHub.
+2. Link your GitHub repository in the **Vercel Dashboard**.
+3. Under **Project Settings &rarr; Environment Variables**, add:
+   * `NEXT_PUBLIC_SUPABASE_URL`
+   * `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+4. Trigger deployment. Every subsequent push automatically builds and updates the live production site.
+
+---
+
+## 📊 Development Status
+
+* **Supabase Migration**: Complete. All mock data (`lib/mockData.ts`) and legacy local storage dependencies have been cleanly decoupled and removed.
+* **Architecture**: Fully relational and unified across Dashboard, Profile, Analytics, Assignments, and Announcements.
+* **Production Validation**: Clean build passing with zero ESLint warnings, strict TypeScript compilation, and zero formatting issues (`npm run build` &rarr; exit code 0).
+
+---
+
+## 🔮 Future Enhancements
+
+* **Faculty & Administrator Portal**: Role-based access control allowing professors to post grades, manage syllabus deadlines, and broadcast department announcements.
+* **Interactive Timetable**: Dynamic daily and weekly lecture scheduling with room allocations.
+* **Notification Engine**: Email and in-app alerts for impending assignment deadlines and attendance threshold warnings.
+* **Document Management**: File upload integration via Supabase Storage for assignment lab report submissions.
+* **Predictive CGPA Calculator**: What-if GPA simulator assisting students in target grade forecasting.
+
+---
+
+## 👨‍💻 Author
+
+**Aneesh Kashyap K S**  
+*Department of Computer Science & Engineering*  
+[GitHub Profile](https://github.com/aneeshkashyap)
