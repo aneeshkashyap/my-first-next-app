@@ -1,13 +1,28 @@
 "use client";
 
+/**
+ * Route protection gatekeeper component.
+ *
+ * Ensures only authenticated students access protected portal routes,
+ * rendering a loading indicator during session verification and redirecting
+ * unauthenticated visitors to /login.
+ */
+
 import React, { useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 
-interface ProtectedRouteProps {
+export interface ProtectedRouteProps {
+  /** Protected children components to render when user session is verified. */
   children: ReactNode;
 }
 
+/**
+ * Guards routes by checking authentication status and redirecting unauthenticated users to the login view.
+ *
+ * @param props - Component properties containing children to protect.
+ * @returns Protected view or loading indicator during authorization check.
+ */
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();

@@ -19,6 +19,15 @@ export const metadata: Metadata = {
   description: "Student dashboard, assignments, announcements, analytics, and academic profile",
 };
 
+/**
+ * Root Application Layout Component
+ *
+ * Provides global typography classes, dark mode styling, the global AuthProvider context,
+ * top navigation Header, and page content hierarchy.
+ *
+ * @param props - Layout props containing page children.
+ * @returns Top-level HTML layout document.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Authentication Context and Provider Component
+ *
+ * Manages the global student authentication state, initial Supabase session detection,
+ * real-time session subscription, and credential login / logout operations.
+ */
+
 import React, {
   createContext,
   useContext,
@@ -9,27 +16,24 @@ import React, {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import {
-  AuthUser,
   formatSupabaseUser,
   authenticateCredentials,
   signOutUser,
 } from "@/lib/auth";
+import type { AuthUser, AuthContextType } from "@/lib/types/auth";
 
-interface AuthContextType {
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (
-    email: string,
-    password: string
-  ) => Promise<{ success: boolean; error?: string }>;
-  logout: () => Promise<void>;
-}
+export type { AuthUser, AuthContextType };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Provides student authentication state and actions across the application tree.
+ *
+ * @param props - Component props containing children elements.
+ * @returns Context provider wrapping the application subtree.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -39,7 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = createClient();
     let isMounted = true;
 
-    // Fetch initial authenticated session from Supabase
+    /**
+     * Retrieves the initial authenticated session from Supabase on application load.
+     */
     async function initializeAuth() {
       try {
         const {
@@ -82,6 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /**
+   * Authenticates user credentials against Supabase and navigates to the dashboard on success.
+   *
+   * @param email - Student institutional email address.
+   * @param password - Account password.
+   * @returns Operation result with success flag and optional error message.
+   */
   const login = useCallback(
     async (email: string, password: string) => {
       const result = await authenticateCredentials(email, password);
@@ -98,6 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [router]
   );
 
+  /**
+   * Signs out the authenticated user session and redirects to the login screen.
+   */
   const logout = useCallback(async () => {
     await signOutUser();
     setUser(null);
@@ -119,6 +135,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Accesses the active authentication context. Must be invoked within an AuthProvider.
+ *
+ * @returns Active AuthContextType containing current student, authentication status, and auth actions.
+ * @throws Error if invoked outside of an AuthProvider hierarchy.
+ */
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {

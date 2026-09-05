@@ -1,41 +1,43 @@
+"use client";
+
+/**
+ * Subject-wise Academic Performance Breakdown Component
+ *
+ * Lists enrolled courses with internal assessment scores, semester final marks,
+ * total marks out of 100, earned grade points, and letter grade badges.
+ */
+
 import React from "react";
-import { SubjectPerformance } from "@/lib/useAnalytics";
+import type { SubjectPerformance } from "@/lib/types/analytics";
+import { getGradeBadgeColor } from "@/lib/utils/formatters";
 
 export interface SubjectPerformanceListProps {
+  /** Array of course performance evaluations. */
   performanceData: SubjectPerformance[];
 }
 
-function getGradeBadgeColor(grade: string): string {
-  switch (grade) {
-    case "A+":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800";
-    case "A":
-      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800";
-    case "B+":
-      return "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800";
-    case "B":
-      return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800";
-    default:
-      return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
-  }
-}
-
+/**
+ * Renders the breakdown of internal, external, and letter grades across all enrolled subjects.
+ *
+ * @param props - Component configuration containing course performance records.
+ * @returns Subject performance list container element.
+ */
 export default function SubjectPerformanceList({
   performanceData,
 }: SubjectPerformanceListProps) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
       {/* Header */}
       <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
             Subject-wise Academic Performance
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Internal assessments, semester finals, and letter grades
           </p>
         </div>
-        <span className="text-xs font-medium px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md">
+        <span className="text-xs font-semibold px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700">
           {performanceData.length} Evaluated
         </span>
       </div>
@@ -50,7 +52,7 @@ export default function SubjectPerformanceList({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2.5">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                     {item.code}
                   </span>
                   <h3 className="font-semibold text-slate-900 dark:text-white text-base">
@@ -58,26 +60,26 @@ export default function SubjectPerformanceList({
                   </h3>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  <span>Credits: {item.credits}</span>
+                  <span className="font-medium text-slate-700 dark:text-slate-300">Credits: {item.credits}</span>
                   <span>•</span>
                   <span>Internal: {item.internalMarks}/50</span>
                   <span>•</span>
                   <span>External: {item.externalMarks}/50</span>
                   <span>•</span>
-                  <span>Total: {item.totalMarks}/100</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">Total: {item.totalMarks}/100</span>
                 </div>
               </div>
 
               {/* Grade Badge and Points */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right">
-                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <span className="text-sm font-bold text-slate-900 dark:text-white">
                     {item.gradePoints} GP
                   </span>
-                  <span className="text-xs text-slate-400 block">Grade Point</span>
+                  <span className="text-[10px] text-slate-400 block font-medium">Grade Point</span>
                 </div>
                 <span
-                  className={`text-sm px-3 py-1 rounded-lg font-bold border ${getGradeBadgeColor(
+                  className={`text-sm px-3.5 py-1 rounded-xl font-bold border shadow-xs ${getGradeBadgeColor(
                     item.grade
                   )}`}
                 >
@@ -93,9 +95,9 @@ export default function SubjectPerformanceList({
                   item.totalMarks >= 90
                     ? "bg-emerald-500"
                     : item.totalMarks >= 80
-                    ? "bg-blue-500"
+                    ? "bg-blue-600"
                     : item.totalMarks >= 70
-                    ? "bg-indigo-500"
+                    ? "bg-blue-500"
                     : "bg-amber-500"
                 }`}
                 style={{ width: `${item.totalMarks}%` }}

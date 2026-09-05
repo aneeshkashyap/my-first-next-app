@@ -146,6 +146,61 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to view the 
 
 ---
 
+## 🔐 Google & GitHub OAuth Configuration
+
+To enable third-party single sign-on (SSO) with Google and GitHub, configure your Supabase project, Google Cloud Console, and GitHub Developer Settings manually:
+
+### 1. Supabase Dashboard Settings
+Navigate to **Authentication &rarr; URL Configuration** in your Supabase Dashboard:
+* **Site URL**: `http://localhost:3000` (or `https://<your-production-domain>`)
+* **Redirect URLs (Allow List)**:
+  * `http://localhost:3000/auth/callback`
+  * `http://localhost:3000/**`
+  * `https://<your-production-domain>/auth/callback`
+
+Supabase provides the shared callback URL for third-party providers:
+```text
+https://<your-project-ref>.supabase.co/auth/v1/callback
+```
+
+### 2. Google Cloud Console Configuration
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and select or create a project.
+2. Go to **APIs & Services &rarr; OAuth consent screen**:
+   * Set user type and fill in required app branding and developer contact emails.
+   * Add scopes: `.../auth/userinfo.email`, `.../auth/userinfo.profile`, `openid`.
+3. Go to **Credentials &rarr; Create Credentials &rarr; OAuth client ID**:
+   * **Application type**: `Web application`
+   * **Authorized JavaScript origins**:
+     * `http://localhost:3000`
+     * `https://<your-project-ref>.supabase.co`
+     * `https://<your-production-domain>` (if deployed)
+   * **Authorized redirect URIs**:
+     * `https://<your-project-ref>.supabase.co/auth/v1/callback`
+4. Copy the generated `Client ID` and `Client Secret`.
+5. In **Supabase Dashboard &rarr; Authentication &rarr; Providers &rarr; Google**:
+   * Enable Google.
+   * Paste `Client ID` and `Client Secret`.
+   * Save configuration.
+
+### 3. GitHub Developer Settings
+1. Go to [GitHub Developer Settings &rarr; OAuth Apps](https://github.com/settings/developers) and click **New OAuth App**.
+2. Fill in the application details:
+   * **Application name**: `Student Portal`
+   * **Homepage URL**: `http://localhost:3000` (or your production URL)
+   * **Authorization callback URL**:
+     * `https://<your-project-ref>.supabase.co/auth/v1/callback`
+3. Click **Register application**.
+4. Generate a **Client Secret**.
+5. In **Supabase Dashboard &rarr; Authentication &rarr; Providers &rarr; GitHub**:
+   * Enable GitHub.
+   * Paste `Client ID` and `Client Secret`.
+   * Save configuration.
+
+> [!IMPORTANT]
+> Never store Google or GitHub Client Secrets in `.env.local`, client code, or version control. OAuth secrets reside exclusively in the Supabase Dashboard.
+
+---
+
 ## 🌐 Production Deployment
 
 The project is configured for continuous zero-downtime deployments using **Vercel**:

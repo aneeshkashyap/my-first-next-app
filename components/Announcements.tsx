@@ -101,24 +101,25 @@ export default function Announcements() {
   );
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
       {/* Section Header */}
       <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
               Recent Announcements
             </h2>
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-pulse" />
               Live Feed
             </span>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Official campus news, academic bulletins, and alerts
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Official campus news, academic bulletins, and administrative alerts
           </p>
         </div>
         {!loading && !error && (
-          <span className="text-xs font-medium px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md">
+          <span className="text-xs font-semibold px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700">
             {filteredAnnouncements.length} Updates
           </span>
         )}
@@ -128,7 +129,7 @@ export default function Announcements() {
       {!loading && !error && (
         <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
               <svg
                 className="w-4 h-4"
                 fill="none"
@@ -147,14 +148,14 @@ export default function Announcements() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search announcements by title..."
-              className="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
+              placeholder="Search announcements by title or content..."
+              className="w-full pl-10 pr-9 py-2.5 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all shadow-2xs"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm("")}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                 aria-label="Clear search"
               >
                 Clear
@@ -184,8 +185,8 @@ export default function Announcements() {
 
       {/* Error State */}
       {!loading && error && (
-        <div className="p-8 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 mb-3 border border-red-200 dark:border-red-800">
+        <div className="p-10 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200 dark:border-rose-800 shadow-xs">
             <svg
               className="w-6 h-6"
               fill="none"
@@ -200,18 +201,18 @@ export default function Announcements() {
               />
             </svg>
           </div>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">
             Unable to Load Announcements
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
             {error}
           </p>
           <button
             onClick={fetchAnnouncements}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors shadow-sm cursor-pointer"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] transition-all shadow-xs cursor-pointer"
           >
             <svg
-              className="w-4 h-4"
+              className="w-3.5 h-3.5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -236,9 +237,9 @@ export default function Announcements() {
               key={announcement.id}
               className="p-5 sm:px-6 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
             >
-              <div className="flex items-start gap-3.5">
+              <div className="flex items-start gap-4">
                 {/* Notice Icon */}
-                <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5 border border-indigo-100 dark:border-indigo-900/50">
+                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 shrink-0 mt-0.5 border border-blue-200/60 dark:border-blue-800/60 shadow-xs">
                   <svg
                     className="w-4 h-4"
                     fill="none"
@@ -260,7 +261,7 @@ export default function Announcements() {
                     <h3 className="font-semibold text-slate-900 dark:text-white text-base capitalize tracking-tight">
                       {announcement.title}
                     </h3>
-                    <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0 font-medium">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0 font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                       Notice #{announcement.id}
                     </span>
                   </div>
@@ -276,13 +277,13 @@ export default function Announcements() {
 
       {/* Empty State / No Match State */}
       {!loading && !error && filteredAnnouncements.length === 0 && (
-        <div className="p-8 text-center text-slate-500 dark:text-slate-400">
-          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+        <div className="p-10 text-center text-slate-500 dark:text-slate-400">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
             No announcements found
           </p>
           {searchTerm ? (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              No results matching &ldquo;{searchTerm}&rdquo;. Try a different search term.
+              No results matching &ldquo;{searchTerm}&rdquo;. Try a different search query.
             </p>
           ) : (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
